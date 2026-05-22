@@ -18,13 +18,6 @@
         </inertial>
     </xacro:macro>
 
-    <link name="world" />
-    <joint name="world_joint" type="fixed">
-        <parent link="world"/>
-        <child link="base_link"/>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-    </joint>
-
     <link name="base_link">
         <visual>
             <origin xyz="0 0 0.1" rpy="0 0 0"/>
@@ -32,7 +25,7 @@
             <material name="grey"/>
         </visual>
         <collision>
-            <origin xyz="0 0 0.1" rpy="0 0 0"/>
+            <origin xyz="0 0 0.1" rpy="0 0 1.5708"/>
             <geometry><cylinder radius="0.1" length="0.2"/></geometry>
         </collision>
         <xacro:cylinder_inertia m="5.0" r="0.1" h="0.2"/>
@@ -103,5 +96,50 @@
         </collision>
         <xacro:cylinder_inertia m="0.5" r="0.02" h="0.3"/>
     </link>
+
+    <ros2_control name="GazeboSystem" type="system">
+        <hardware>
+            <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+        </hardware>
+        <joint name="joint1">
+            <command_interface name="position">
+                <param name="min">-2.5</param>
+                <param name="max">2.5</param>
+            </command_interface>
+            <state_interface name="position">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="joint2">
+            <command_interface name="position">
+                <param name="min">-2.5</param>
+                <param name="max">2.5</param>
+            </command_interface>
+            <state_interface name="position">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+        <joint name="joint3">
+            <command_interface name="position">
+                <param name="min">-0.15</param>
+                <param name="max">0.05</param>
+            </command_interface>
+            <state_interface name="position">
+                <param name="initial_value">0.0</param>
+            </state_interface>
+            <state_interface name="velocity"/>
+            <state_interface name="effort"/>
+        </joint>
+    </ros2_control>
+
+    <gazebo>
+        <plugin filename="/opt/ros/jazzy/lib/libgz_ros2_control-system.so" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+            <parameters>$(find projekt)/config/controller_position.yaml</parameters>
+        </plugin>
+    </gazebo>
 
 </robot>
