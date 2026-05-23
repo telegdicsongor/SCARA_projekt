@@ -22,11 +22,11 @@
   gz_type_name: "gz.msgs.StringMsg"
   direction: "GZ_TO_ROS"
 
-#- ros_topic_name: "/contact_left_finger"
-#  gz_topic_name: "/contact_left_finger"
-#  ros_type_name: "ros_gz_interfaces/msg/Contacts"
-#  gz_type_name: "gz.msgs.Contacts"
-#  direction: "GZ_TO_ROS"
+- ros_topic_name: "/contact_end_effector"
+  gz_topic_name: "/contact_end_effector"
+  ros_type_name: "ros_gz_interfaces/msg/Contacts"
+  gz_type_name: "gz.msgs.Contacts"
+  direction: "GZ_TO_ROS"
 
 #- ros_topic_name: "gripper_camera/camera_info"
 #  gz_topic_name: "gripper_camera/camera_info"
