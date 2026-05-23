@@ -1,0 +1,39 @@
+-- The C compiler identification is GNU 13.3.0
+-- The CXX compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Found ament_cmake: 2.5.5 (/opt/ros/jazzy/share/ament_cmake/cmake)
+-- Found Python3: /usr/bin/python3 (found version "3.12.3") found components: Interpreter 
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt
+-- Install configuration: ""
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/config
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/config/controller_position.yaml
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/config/gz_bridge.yaml
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/launch
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/launch/spawn_robot.launch.py
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/launch/world.launch.py
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/launch/check_urdf.launch.py
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/rviz
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/rviz/rviz.rviz
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/rviz/urdf.rviz
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/urdf
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/urdf/scara.gazebo
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/urdf/scara.urdf
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/worlds
+-- Installing: /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/worlds/world.sdf
+[31mCMake Error at cmake_install.cmake:46 (file):
+  file INSTALL cannot find
+  "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/meshes": No such file
+  or directory.
+
+[0m
