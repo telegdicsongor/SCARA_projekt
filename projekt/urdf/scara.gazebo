@@ -12,7 +12,7 @@
 
   <gazebo>
     <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-      <parameters>$(find bme_ros2_simple_arm)/config/controller_position.yaml</parameters>
+      <parameters>$(find projekt)/config/controller_position.yaml</parameters>
     </plugin>
   </gazebo>
 </robot>
