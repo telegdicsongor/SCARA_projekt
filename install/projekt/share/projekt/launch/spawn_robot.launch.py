@@ -268,12 +268,14 @@ def generate_launch_description():
         name='attach_detach_controller',
         output='screen',
         parameters=[
-            {'use_sim_time': LaunchConfiguration('use_sim_time'),
+            {'use_sim_time': False,
              'contact_topic': '/contact_end_effector',
              'attach_topic': '/wood_cube_5cm/attach',
              'detach_topic': '/wood_cube_5cm/detach',
              'state_topic': '/wood_cube_5cm/state',
-             'required_contact_name': 'wood_cube_5cm'},
+             'required_contact_name': 'wood_cube_5cm',
+             'startup_detach_count': 40,
+             'startup_detach_period': 0.25},
         ],
     )
 

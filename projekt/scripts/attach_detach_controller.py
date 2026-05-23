@@ -22,7 +22,7 @@ class AttachDetachController(Node):
         self.declare_parameter("detach_topic", "/wood_cube_5cm/detach")
         self.declare_parameter("state_topic", "/wood_cube_5cm/state")
         self.declare_parameter("required_contact_name", "wood_cube_5cm")
-        self.declare_parameter("startup_detach_count", 8)
+        self.declare_parameter("startup_detach_count", 40)
         self.declare_parameter("startup_detach_period", 0.25)
 
         self._contact_topic = self.get_parameter("contact_topic").value
@@ -66,7 +66,7 @@ class AttachDetachController(Node):
         self._publish_startup_detach()
 
         self.get_logger().info(
-            "Attach-detach controller started with joint detached by default"
+            "Attach-detach controller started; publishing startup detach commands"
         )
 
     def _publish_startup_detach(self) -> None:
