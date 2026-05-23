@@ -108,10 +108,10 @@
     <joint name="joint4" type="fixed">
         <origin xyz="0.0 0.0 -0.1" rpy="0 0 0"/>
         <parent link="end_effector"/>
-        <child link="red_cube_link"/>
+        <child link="red_cube"/>
     </joint>
 
-    <link name="red_cube_link">
+    <link name="red_cube">
         <visual>
             <origin xyz="0.0 0.0 -0.1" rpy="0 0 0"/>
             <geometry>
@@ -169,7 +169,7 @@
 
     <gazebo>
         <plugin filename="ignition-gazebo-detachable-joint-system" name="ignition::gazebo::systems::DetachableJoint">
-            <parent_link>red_cube_link</parent_link>
+            <parent_link>end_effector</parent_link>
             <child_model>wood_cube_5cm</child_model>
             <child_link>link</child_link>
             <detach_topic>/wood_cube_5cm/detach</detach_topic>
