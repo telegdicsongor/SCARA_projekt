@@ -13,6 +13,7 @@ find_package(ament_cmake REQUIRED)
 
 install(PROGRAMS
   scripts/attach_detach_controller.py
+  scripts/controller_state_to_joint_states.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
