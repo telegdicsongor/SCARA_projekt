@@ -10,6 +10,16 @@
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/urdf/scara.gazebo
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/urdf/scara.urdf
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/worlds/world.sdf
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/wood_cube_5cm.mtl
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/model.config
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/thumbnails/4.png
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/thumbnails/1.png
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/thumbnails/3.png
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/thumbnails/5.png
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/thumbnails/2.png
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/model.sdf
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/model.rsdf
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/wood_cube_5cm.obj
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/ament_index/resource_index/package_run_dependencies/projekt
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/ament_index/resource_index/parent_prefix_path/projekt
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/environment/ament_prefix_path.sh

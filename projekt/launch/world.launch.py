@@ -16,9 +16,15 @@ def generate_launch_description():
     projekt = get_package_share_directory('projekt')
     pkg_ros_gz_sim = get_package_share_directory('ros_gz_sim')
 
-    # Add your own gazebo library path here
-    gazebo_models_path = "/home/veszpo/gazebo_models"
-    os.environ["GZ_SIM_RESOURCE_PATH"] += os.pathsep + gazebo_models_path
+    gazebo_resource_paths = [
+        os.path.join(projekt, 'meshes'),
+        os.path.dirname(projekt),
+        os.path.expanduser('~/gazebo_models'),
+    ]
+    existing_resource_path = os.environ.get("GZ_SIM_RESOURCE_PATH", "")
+    os.environ["GZ_SIM_RESOURCE_PATH"] = os.pathsep.join(
+        path for path in [existing_resource_path, *gazebo_resource_paths] if path
+    )
 
 
     gazebo_launch = IncludeLaunchDescription(

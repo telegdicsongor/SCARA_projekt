@@ -17,8 +17,15 @@ def generate_launch_description():
     except PackageNotFoundError:
         has_joint_state_broadcaster = False
 
-    gazebo_models_path, ignore_last_dir = os.path.split(projekt)
-    os.environ["GZ_SIM_RESOURCE_PATH"] = os.environ.get("GZ_SIM_RESOURCE_PATH", "") + os.pathsep + gazebo_models_path
+    gazebo_resource_paths = [
+        os.path.join(projekt, 'meshes'),
+        os.path.dirname(projekt),
+        os.path.expanduser('~/gazebo_models'),
+    ]
+    existing_resource_path = os.environ.get("GZ_SIM_RESOURCE_PATH", "")
+    os.environ["GZ_SIM_RESOURCE_PATH"] = os.pathsep.join(
+        path for path in [existing_resource_path, *gazebo_resource_paths] if path
+    )
     gz_ros2_control_lib_path = os.path.join(get_package_prefix('gz_ros2_control'), 'lib')
     os.environ["GZ_SIM_SYSTEM_PLUGIN_PATH"] = os.environ.get("GZ_SIM_SYSTEM_PLUGIN_PATH", "") + os.pathsep + gz_ros2_control_lib_path
 
