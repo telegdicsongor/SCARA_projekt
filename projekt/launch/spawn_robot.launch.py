@@ -44,22 +44,22 @@ def generate_launch_description():
 
     x_arg = DeclareLaunchArgument(
         'x', default_value='0.0',
-        description='x coordinate of spawned robot'
+        description='x coordinate of the fixed robot base'
     )
 
     y_arg = DeclareLaunchArgument(
         'y', default_value='-0.3',
-        description='y coordinate of spawned robot'
+        description='y coordinate of the fixed robot base'
     )
 
     z_arg = DeclareLaunchArgument(
         'z', default_value='1.02',
-        description='z coordinate of spawned robot'
+        description='z coordinate of the fixed robot base'
     )
 
     yaw_arg = DeclareLaunchArgument(
         'yaw', default_value='1.5708',
-        description='yaw angle of spawned robot'
+        description='yaw angle of the fixed robot base'
     )
 
     sim_time_arg = DeclareLaunchArgument(
@@ -93,6 +93,14 @@ def generate_launch_description():
         ]
     )
 
+    robot_description = Command([
+        'xacro', ' ', urdf_file_path,
+        ' base_x:=', LaunchConfiguration('x'),
+        ' base_y:=', LaunchConfiguration('y'),
+        ' base_z:=', LaunchConfiguration('z'),
+        ' base_yaw:=', LaunchConfiguration('yaw'),
+    ])
+
     world_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(projekt, 'launch', 'world.launch.py'),
@@ -120,7 +128,7 @@ def generate_launch_description():
         arguments=[
             "-name", "scara",
             "-topic", "robot_description",
-            "-x", LaunchConfiguration('x'), "-y", LaunchConfiguration('y'), "-z", LaunchConfiguration('z'), "-Y", LaunchConfiguration('yaw')  # Initial spawn position
+            "-x", "0.0", "-y", "0.0", "-z", "0.0", "-Y", "0.0"
         ],
         output="screen",
         parameters=[
@@ -148,7 +156,7 @@ def generate_launch_description():
         name='robot_state_publisher',
         output='screen',
         parameters=[
-            {'robot_description': Command(['xacro', ' ', urdf_file_path]),
+            {'robot_description': robot_description,
              'use_sim_time': LaunchConfiguration('use_sim_time')},
         ],
         remappings=[
@@ -164,36 +172,9 @@ def generate_launch_description():
         output='screen',
         condition=IfCondition(LaunchConfiguration('fake_joint_states')),
         parameters=[
-            {'robot_description': Command(['xacro', ' ', urdf_file_path]),
+            {'robot_description': robot_description,
              'rate': 10,
              'use_sim_time': LaunchConfiguration('use_sim_time')},
-        ],
-    )
-
-    world_to_base_tf_node = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        name='world_to_base_footprint_tf',
-        arguments=[
-            '--x',
-            LaunchConfiguration('x'),
-            '--y',
-            LaunchConfiguration('y'),
-            '--z',
-            LaunchConfiguration('z'),
-            '--roll',
-            '0.0',
-            '--pitch',
-            '0.0',
-            '--yaw',
-            LaunchConfiguration('yaw'),
-            '--frame-id',
-            'world',
-            '--child-frame-id',
-            'base_footprint',
-        ],
-        parameters=[
-            {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ],
     )
 
@@ -395,7 +376,6 @@ def generate_launch_description():
     launchDescriptionObject.add_action(rviz_after_start)
     launchDescriptionObject.add_action(world_launch)
     launchDescriptionObject.add_action(gz_bridge_node)
-    launchDescriptionObject.add_action(world_to_base_tf_node)
     launchDescriptionObject.add_action(robot_state_publisher_node)
     launchDescriptionObject.add_action(joint_state_publisher_node)
     launchDescriptionObject.add_action(spawn_urdf_node)

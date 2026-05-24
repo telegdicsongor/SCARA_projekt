@@ -1,6 +1,0 @@
-[31mCMake Error at cmake_install.cmake:50 (file):
-  file INSTALL cannot find
-  "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/meshes": No such file
-  or directory.
-
-[0m

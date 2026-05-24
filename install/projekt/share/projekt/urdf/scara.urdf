@@ -18,6 +18,19 @@
         </inertial>
     </xacro:macro>
 
+    <xacro:arg name="base_x" default="0.0"/>
+    <xacro:arg name="base_y" default="-0.3"/>
+    <xacro:arg name="base_z" default="1.02"/>
+    <xacro:arg name="base_yaw" default="1.5708"/>
+
+    <link name="world"/>
+
+    <joint name="world_to_base_footprint" type="fixed">
+        <parent link="world"/>
+        <child link="base_footprint"/>
+        <origin xyz="$(arg base_x) $(arg base_y) $(arg base_z)" rpy="0 0 $(arg base_yaw)"/>
+    </joint>
+
     <link name="base_footprint"/>
 
     <joint name="base_footprint_joint" type="fixed">
@@ -126,7 +139,7 @@
     <joint type="fixed" name="table_camera_joint">
         <origin xyz="0.25 0.0 1.5" rpy="0 1.5707 0"/>
         <child link="table_camera_link"/>
-        <parent link="base_link"/>
+        <parent link="base_footprint"/>
     </joint>
 
     <link name='table_camera_link'>
