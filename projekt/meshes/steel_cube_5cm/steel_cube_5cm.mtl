@@ -1,0 +1,10 @@
+# Blender-style material used by Gazebo for the steel cube OBJ.
+newmtl Steel
+Ns 180.000000
+Ka 0.450000 0.500000 0.550000
+Kd 0.520000 0.600000 0.680000
+Ks 0.800000 0.850000 0.900000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
