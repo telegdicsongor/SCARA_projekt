@@ -256,10 +256,28 @@
       <pose>0 0 0 0 0 0</pose>
       <self_collide>false</self_collide>
     </model>
+    <!-- Sortable objects for the pre-AI sorting scene. -->
     <include>
       <uri>../meshes/wood_cube_5cm/model.sdf</uri>
       <name>wood_cube_5cm</name>
-      <pose>0 0.20000000000000001 1.01 0 0 0</pose>
+      <pose>0 0.18 1.015 0 0 0</pose>
+    </include>
+    <include>
+      <uri>../meshes/steel_cube_5cm/model.sdf</uri>
+      <name>steel_cube_5cm</name>
+      <pose>0.12 0.18 1.015 0 0 0</pose>
+    </include>
+
+    <!-- Low open collection bins. The model origins sit on the table surface. -->
+    <include>
+      <uri>../meshes/wood_collection_bin/model.sdf</uri>
+      <name>wood_collection_bin</name>
+      <pose>-0.50 -0.15 1.015 0 0 0</pose>
+    </include>
+    <include>
+      <uri>../meshes/steel_collection_bin/model.sdf</uri>
+      <name>steel_collection_bin</name>
+      <pose>0.50 -0.15 1.015 0 0 0</pose>
     </include>
     <light name='sun' type='directional'>
       <pose>0 0 10 0 0 0</pose>
