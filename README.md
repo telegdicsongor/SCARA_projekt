@@ -56,3 +56,40 @@ Recommended screenshot path:
 ```text
 docs/images/final_sorting_scene.png
 ```
+
+## Collect Training Images
+
+The first AI milestone is a camera image collection node. It subscribes to the
+table camera image and saves labeled frames for neural network training.
+
+Start the simulation in one terminal:
+
+```bash
+cd /home/telegdicsongor/scara_ws/SCARA_projekt
+source install/setup.bash
+ros2 launch projekt spawn_robot.launch.py
+```
+
+Start the collector in another terminal:
+
+```bash
+cd /home/telegdicsongor/scara_ws/SCARA_projekt/projekt
+source ../install/setup.bash
+ros2 run projekt save_training_images.py
+```
+
+Keyboard labels in the OpenCV window:
+
+- `w`: save a `wood_cube` image
+- `s`: save a `steel_cube` image
+- `n`: save a `not_cube` image
+- `q`: quit
+
+Images are saved under:
+
+```text
+projekt/training_images/
+```
+
+For the first test, collect at least 30 images per class. For better training,
+collect at least 100 images per class with the cubes in different positions.

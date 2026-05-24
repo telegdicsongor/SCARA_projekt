@@ -14,6 +14,7 @@ find_package(ament_cmake REQUIRED)
 install(PROGRAMS
   scripts/attach_detach_controller.py
   scripts/controller_state_to_joint_states.py
+  scripts/save_training_images.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -24,6 +25,7 @@ install(DIRECTORY
   urdf
   worlds
   meshes
+  training_images
   DESTINATION share/${PROJECT_NAME}
 )
 
