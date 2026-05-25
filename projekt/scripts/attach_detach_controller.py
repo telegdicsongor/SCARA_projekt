@@ -42,7 +42,9 @@ class AttachDetachController(Node):
         self.declare_parameter(
             "required_contact_names", ["wood_cube_5cm", "steel_cube_5cm"]
         )
-        self.declare_parameter("startup_detach_count", 40)
+        self.declare_parameter("attached_object_topic", "/gripper/attached_object")
+        self.declare_parameter("release_topic", "/gripper/release")
+        self.declare_parameter("startup_detach_count", 20)
         self.declare_parameter("startup_detach_period", 0.25)
 
         self._contact_topic = self.get_parameter("contact_topic").value
@@ -57,6 +59,7 @@ class AttachDetachController(Node):
         self._startup_detaching = self._startup_detach_remaining > 0
         self._pending_attach_target: str | None = None
         self._state_subs = []
+        self._command_subs = []
 
         command_qos = QoSProfile(depth=10)
         contact_qos = QoSProfile(
@@ -67,6 +70,15 @@ class AttachDetachController(Node):
 
         self._targets = self._configure_targets(command_qos)
         self._target_by_name = {target.name: target for target in self._targets}
+        self._attached_state_pub = self.create_publisher(
+            String, self.get_parameter("attached_object_topic").value, command_qos
+        )
+        self._release_sub = self.create_subscription(
+            Empty,
+            self.get_parameter("release_topic").value,
+            self._on_release,
+            command_qos,
+        )
         self._contact_sub = self.create_subscription(
             Contacts, self._contact_topic, self._on_contact, contact_qos
         )
@@ -81,6 +93,7 @@ class AttachDetachController(Node):
             "Attach-detach controller started for "
             f"{target_names}; publishing startup detach commands"
         )
+        self._publish_attached_state()
 
     def _configure_targets(self, command_qos: QoSProfile) -> list[AttachmentTarget]:
         names = self._string_list_parameter("object_names")
@@ -121,6 +134,16 @@ class AttachDetachController(Node):
                     10,
                 )
             )
+            self._command_subs.append(
+                self.create_subscription(
+                    Empty,
+                    attach_topic,
+                    lambda msg, target_name=name: self._on_attach_command(
+                        target_name, msg
+                    ),
+                    command_qos,
+                )
+            )
             targets.append(
                 AttachmentTarget(
                     name=name,
@@ -142,6 +165,7 @@ class AttachDetachController(Node):
             target.detach_pub.publish(Empty())
 
         self._attached_target = None
+        self._publish_attached_state()
         self._startup_detach_remaining -= 1
 
         if self._startup_detach_remaining == 0:
@@ -163,6 +187,7 @@ class AttachDetachController(Node):
         if "detach" in state:
             if self._attached_target == target_name:
                 self._attached_target = None
+                self._publish_attached_state()
         elif "attach" in state:
             if self._attached_target and self._attached_target != target_name:
                 target = self._target_by_name.get(target_name)
@@ -175,6 +200,23 @@ class AttachDetachController(Node):
                 return
 
             self._attached_target = target_name
+            self._publish_attached_state()
+
+    def _on_attach_command(self, target_name: str, _msg: Empty) -> None:
+        if self._startup_detaching:
+            if self._pending_attach_target is None:
+                self._pending_attach_target = target_name
+            return
+
+        if self._attached_target and self._attached_target != target_name:
+            return
+
+        if self._attached_target != target_name:
+            self.get_logger().info(f"Attach command observed for {target_name}")
+
+        self._attached_target = target_name
+        self._pending_attach_target = None
+        self._publish_attached_state()
 
     def _on_contact(self, msg: Contacts) -> None:
         if self._attached_target or not msg.contacts:
@@ -201,7 +243,28 @@ class AttachDetachController(Node):
         target.attach_pub.publish(Empty())
         self._attached_target = target.name
         self._pending_attach_target = None
+        self._publish_attached_state()
         self.get_logger().info(log_message)
+
+    def _on_release(self, _msg: Empty) -> None:
+        if self._attached_target:
+            target = self._target_by_name.get(self._attached_target)
+            if target:
+                target.detach_pub.publish(Empty())
+                self.get_logger().info(f"Release requested; detaching {target.name}")
+        else:
+            for target in self._targets:
+                target.detach_pub.publish(Empty())
+            self.get_logger().info("Release requested; broadcasting detach")
+
+        self._attached_target = None
+        self._pending_attach_target = None
+        self._publish_attached_state()
+
+    def _publish_attached_state(self) -> None:
+        msg = String()
+        msg.data = self._attached_target or ""
+        self._attached_state_pub.publish(msg)
 
     def _contact_target(self, contact) -> AttachmentTarget | None:
         names = [name.lower() for name in self._contact_names(contact)]

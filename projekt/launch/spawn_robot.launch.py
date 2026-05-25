@@ -1,6 +1,6 @@
 import os
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, LogInfo, RegisterEventHandler, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, GroupAction, IncludeLaunchDescription, LogInfo, RegisterEventHandler, TimerAction
 from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -77,6 +77,16 @@ def generate_launch_description():
     fake_joint_states_arg = DeclareLaunchArgument(
         'fake_joint_states', default_value='false',
         description='Publish fake zero joint states for URDF-only debugging'
+    )
+
+    sorting_arg = DeclareLaunchArgument(
+        'sorting', default_value='false',
+        description='Start the SCARA sorting nodes after the robot is ready'
+    )
+
+    static_pixel_detections_arg = DeclareLaunchArgument(
+        'static_pixel_detections', default_value='true',
+        description='Publish world.sdf cube detections until the neural network node exists'
     )
 
     # Define the path to your URDF or Xacro file
@@ -232,7 +242,7 @@ def generate_launch_description():
 
     home_trajectory_goal = (
         "{trajectory: {joint_names: [joint1, joint2, joint3], "
-        "points: [{positions: [0.0, 0.0, 0.0], "
+        "points: [{positions: [-1.5708, 0.0, 0.05], "
         "time_from_start: {sec: 1, nanosec: 0}}]}}"
     )
 
@@ -272,7 +282,12 @@ def generate_launch_description():
     home_robot_after_controller = RegisterEventHandler(
         OnProcessExit(
             target_action=joint_trajectory_controller_spawner,
-            on_exit=[home_robot_node],
+            on_exit=[
+                TimerAction(
+                    period=8.0,
+                    actions=[home_robot_node],
+                )
+            ],
         )
     )
 
@@ -289,7 +304,9 @@ def generate_launch_description():
              'detach_topics': ['/wood_cube_5cm/detach', '/steel_cube_5cm/detach'],
              'state_topics': ['/wood_cube_5cm/state', '/steel_cube_5cm/state'],
              'required_contact_names': ['wood_cube_5cm', 'steel_cube_5cm'],
-             'startup_detach_count': 40,
+             'attached_object_topic': '/gripper/attached_object',
+             'release_topic': '/gripper/release',
+             'startup_detach_count': 20,
              'startup_detach_period': 0.25},
         ],
     )
@@ -301,6 +318,72 @@ def generate_launch_description():
                 TimerAction(
                     period=1.0,
                     actions=[attach_detach_controller_node],
+                )
+            ],
+        )
+    )
+
+    static_detector_node = Node(
+        package='projekt',
+        executable='static_pixel_detection_publisher.py',
+        name='static_pixel_detection_publisher',
+        output='screen',
+        condition=IfCondition(LaunchConfiguration('static_pixel_detections')),
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time'),
+             'detections_topic': '/sorting/pixel_detections',
+             'camera_info_topic': '/table_camera/camera_info',
+             'base_frame': 'base_link',
+             'camera_frame': 'table_camera_link_optical',
+             'load_object_poses_from_world': True,
+             'world_file': LaunchConfiguration('world'),
+             'base_world_x': LaunchConfiguration('x'),
+             'base_world_y': LaunchConfiguration('y'),
+             'base_world_z': LaunchConfiguration('z'),
+             'base_world_yaw': LaunchConfiguration('yaw')},
+        ],
+    )
+
+    sorter_node = Node(
+        package='projekt',
+        executable='scara_sorter.py',
+        name='scara_sorter',
+        output='screen',
+        parameters=[
+            {'use_sim_time': LaunchConfiguration('use_sim_time'),
+             'detections_topic': '/sorting/pixel_detections',
+             'camera_info_topic': '/table_camera/camera_info',
+             'shared_bin_x': 0.12,
+             'shared_bin_y': 0.40,
+             'load_bin_poses_from_world': True,
+             'world_file': LaunchConfiguration('world'),
+             'base_world_x': LaunchConfiguration('x'),
+             'base_world_y': LaunchConfiguration('y'),
+             'base_world_z': LaunchConfiguration('z'),
+             'base_world_yaw': LaunchConfiguration('yaw'),
+             'bin_names': ['wood_collection_bin', 'steel_collection_bin'],
+             'home_joint1': -1.5708,
+             'home_joint2': 0.0,
+             'home_joint3': 0.05,
+             'travel_joint3': 0.05,
+             'direct_attach': True,
+             'attach_object_names': ['wood_cube_5cm', 'steel_cube_5cm'],
+             'attach_topics': ['/wood_cube_5cm/attach', '/steel_cube_5cm/attach']},
+        ],
+    )
+
+    sorting_nodes_after_controller = RegisterEventHandler(
+        OnProcessExit(
+            target_action=joint_trajectory_controller_spawner,
+            on_exit=[
+                GroupAction(
+                    condition=IfCondition(LaunchConfiguration('sorting')),
+                    actions=[
+                        TimerAction(
+                            period=12.0,
+                            actions=[static_detector_node, sorter_node],
+                        )
+                    ],
                 )
             ],
         )
@@ -368,6 +451,8 @@ def generate_launch_description():
     launchDescriptionObject.add_action(yaw_arg)
     launchDescriptionObject.add_action(sim_time_arg)
     launchDescriptionObject.add_action(fake_joint_states_arg)
+    launchDescriptionObject.add_action(sorting_arg)
+    launchDescriptionObject.add_action(static_pixel_detections_arg)
     if has_joint_state_broadcaster:
         launchDescriptionObject.add_action(joint_state_broadcaster_after_spawn)
         launchDescriptionObject.add_action(arm_controller_after_joint_states)
@@ -380,6 +465,7 @@ def generate_launch_description():
         launchDescriptionObject.add_action(arm_controller_after_spawn)
         launchDescriptionObject.add_action(controller_state_to_joint_states_node)
     launchDescriptionObject.add_action(home_robot_after_controller)
+    launchDescriptionObject.add_action(sorting_nodes_after_controller)
     launchDescriptionObject.add_action(attach_detach_controller_after_spawn)
     launchDescriptionObject.add_action(rviz_after_start)
     launchDescriptionObject.add_action(world_launch)
