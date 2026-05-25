@@ -227,6 +227,17 @@
             <output_topic>/wood_cube_5cm/state</output_topic>
         </plugin>
     </gazebo>
+
+    <gazebo>
+        <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
+            <parent_link>end_effector</parent_link>
+            <child_model>steel_cube_5cm</child_model>
+            <child_link>link</child_link>
+            <detach_topic>/steel_cube_5cm/detach</detach_topic>
+            <attach_topic>/steel_cube_5cm/attach</attach_topic>
+            <output_topic>/steel_cube_5cm/state</output_topic>
+        </plugin>
+    </gazebo>
     
     <gazebo reference="end_effector">
         <sensor name='sensor_contact' type='contact'>
