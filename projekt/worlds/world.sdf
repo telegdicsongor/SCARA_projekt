@@ -260,7 +260,7 @@
     <include>
       <uri>../meshes/wood_cube_5cm/model.sdf</uri>
       <name>wood_cube_5cm</name>
-      <pose>0 0.18 1.015 0 0 0</pose>
+      <pose>-0.12 0.18 1.015 0 0 0</pose>
     </include>
     <include>
       <uri>../meshes/steel_cube_5cm/model.sdf</uri>

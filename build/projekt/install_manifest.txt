@@ -1,5 +1,6 @@
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/lib/projekt/attach_detach_controller.py
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/lib/projekt/controller_state_to_joint_states.py
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/lib/projekt/save_training_images.py
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/config/controller_position.yaml
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/config/gz_bridge.yaml
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/launch/spawn_robot.launch.py
@@ -30,6 +31,10 @@
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/model.sdf
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/model.rsdf
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/meshes/wood_cube_5cm/wood_cube_5cm.obj
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/training_images/not_cube/.gitkeep
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/training_images/steel_cube/.gitkeep
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/training_images/README.md
+/home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/training_images/wood_cube/.gitkeep
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/ament_index/resource_index/package_run_dependencies/projekt
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/ament_index/resource_index/parent_prefix_path/projekt
 /home/telegdicsongor/scara_ws/SCARA_projekt/install/projekt/share/projekt/environment/ament_prefix_path.sh

@@ -46,6 +46,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/projekt" TYPE PROGRAM FILES
     "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/scripts/attach_detach_controller.py"
     "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/scripts/controller_state_to_joint_states.py"
+    "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/scripts/save_training_images.py"
     )
 endif()
 
@@ -57,6 +58,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
     "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/urdf"
     "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/worlds"
     "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/meshes"
+    "/home/telegdicsongor/scara_ws/SCARA_projekt/projekt/training_images"
     )
 endif()
 

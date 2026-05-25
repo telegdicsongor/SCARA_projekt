@@ -42,13 +42,13 @@
 			{
 				"command" : 0,
 				"file" : 0,
-				"line" : 20,
+				"line" : 21,
 				"parent" : 0
 			},
 			{
 				"command" : 5,
 				"file" : 0,
-				"line" : 30,
+				"line" : 32,
 				"parent" : 0
 			},
 			{
@@ -236,7 +236,8 @@
 			"paths" : 
 			[
 				"scripts/attach_detach_controller.py",
-				"scripts/controller_state_to_joint_states.py"
+				"scripts/controller_state_to_joint_states.py",
+				"scripts/save_training_images.py"
 			],
 			"type" : "file"
 		},
@@ -251,7 +252,8 @@
 				"rviz",
 				"urdf",
 				"worlds",
-				"meshes"
+				"meshes",
+				"training_images"
 			],
 			"type" : "directory"
 		},

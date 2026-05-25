@@ -1,0 +1,7 @@
+.venv/
+training_images/
+network_model/
+*.keras
+*.h5
+__pycache__/
+*.pyc

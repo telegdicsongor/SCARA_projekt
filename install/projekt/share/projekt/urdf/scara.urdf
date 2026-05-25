@@ -137,7 +137,7 @@
 
     <!-- STEP 12 - Table camera -->
     <joint type="fixed" name="table_camera_joint">
-        <origin xyz="0.25 0.0 1.5" rpy="0 1.5707 0"/>
+        <origin xyz="0.25 0.0 1.0" rpy="0 1.5707 0"/>
         <child link="table_camera_link"/>
         <parent link="base_footprint"/>
     </joint>
