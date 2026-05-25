@@ -112,27 +112,6 @@ Visualization Manager:
       Far Plane Distance: 100
       Image Rendering: background and overlay
       Name: Camera
-      Overlay Alpha: 1
-      Topic:
-        Depth: 5
-        Durability Policy: Volatile
-        History Policy: Keep Last
-        Reliability Policy: Reliable
-        Value: /gripper_camera/image/compressed
-      Value: false
-      Visibility:
-        Camera: true
-        DepthCloud: true
-        Grid: true
-        RobotModel: true
-        TF: true
-        Value: true
-      Zoom Factor: 1
-    - Class: rviz_default_plugins/Camera
-      Enabled: false
-      Far Plane Distance: 100
-      Image Rendering: background and overlay
-      Name: Camera
       Overlay Alpha: 0.5
       Topic:
         Depth: 5
