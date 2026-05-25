@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Iterable
 
 import rclpy
@@ -11,6 +12,14 @@ from ros_gz_interfaces.msg import Contacts
 from std_msgs.msg import Empty, String
 
 
+@dataclass
+class AttachmentTarget:
+    name: str
+    contact_name: str
+    attach_pub: object
+    detach_pub: object
+
+
 class AttachDetachController(Node):
     """Control the Gazebo detachable joint from end-effector contact events."""
 
@@ -18,17 +27,25 @@ class AttachDetachController(Node):
         super().__init__("attach_detach_controller")
 
         self.declare_parameter("contact_topic", "/contact_end_effector")
-        self.declare_parameter("attach_topic", "/wood_cube_5cm/attach")
-        self.declare_parameter("detach_topic", "/wood_cube_5cm/detach")
-        self.declare_parameter("state_topic", "/wood_cube_5cm/state")
-        self.declare_parameter("required_contact_name", "wood_cube_5cm")
+        self.declare_parameter(
+            "object_names", ["wood_cube_5cm", "steel_cube_5cm"]
+        )
+        self.declare_parameter(
+            "attach_topics", ["/wood_cube_5cm/attach", "/steel_cube_5cm/attach"]
+        )
+        self.declare_parameter(
+            "detach_topics", ["/wood_cube_5cm/detach", "/steel_cube_5cm/detach"]
+        )
+        self.declare_parameter(
+            "state_topics", ["/wood_cube_5cm/state", "/steel_cube_5cm/state"]
+        )
+        self.declare_parameter(
+            "required_contact_names", ["wood_cube_5cm", "steel_cube_5cm"]
+        )
         self.declare_parameter("startup_detach_count", 40)
         self.declare_parameter("startup_detach_period", 0.25)
 
         self._contact_topic = self.get_parameter("contact_topic").value
-        self._required_contact_name = self.get_parameter(
-            "required_contact_name"
-        ).value
         self._startup_detach_remaining = int(
             self.get_parameter("startup_detach_count").value
         )
@@ -36,9 +53,10 @@ class AttachDetachController(Node):
             self.get_parameter("startup_detach_period").value
         )
 
-        self._attached = False
+        self._attached_target: str | None = None
         self._startup_detaching = self._startup_detach_remaining > 0
-        self._pending_attach = False
+        self._pending_attach_target: str | None = None
+        self._state_subs = []
 
         command_qos = QoSProfile(depth=10)
         contact_qos = QoSProfile(
@@ -47,17 +65,10 @@ class AttachDetachController(Node):
             reliability=ReliabilityPolicy.BEST_EFFORT,
         )
 
-        self._attach_pub = self.create_publisher(
-            Empty, self.get_parameter("attach_topic").value, command_qos
-        )
-        self._detach_pub = self.create_publisher(
-            Empty, self.get_parameter("detach_topic").value, command_qos
-        )
+        self._targets = self._configure_targets(command_qos)
+        self._target_by_name = {target.name: target for target in self._targets}
         self._contact_sub = self.create_subscription(
             Contacts, self._contact_topic, self._on_contact, contact_qos
-        )
-        self._state_sub = self.create_subscription(
-            String, self.get_parameter("state_topic").value, self._on_state, 10
         )
 
         self._startup_timer = self.create_timer(
@@ -65,9 +76,61 @@ class AttachDetachController(Node):
         )
         self._publish_startup_detach()
 
+        target_names = ", ".join(target.name for target in self._targets)
         self.get_logger().info(
-            "Attach-detach controller started; publishing startup detach commands"
+            "Attach-detach controller started for "
+            f"{target_names}; publishing startup detach commands"
         )
+
+    def _configure_targets(self, command_qos: QoSProfile) -> list[AttachmentTarget]:
+        names = self._string_list_parameter("object_names")
+        attach_topics = self._string_list_parameter("attach_topics")
+        detach_topics = self._string_list_parameter("detach_topics")
+        state_topics = self._string_list_parameter("state_topics")
+        contact_names = self._string_list_parameter("required_contact_names")
+
+        if not names:
+            raise ValueError("At least one object name must be configured")
+
+        for parameter_name, values in (
+            ("attach_topics", attach_topics),
+            ("detach_topics", detach_topics),
+            ("state_topics", state_topics),
+            ("required_contact_names", contact_names),
+        ):
+            if values and len(values) != len(names):
+                self.get_logger().warn(
+                    f"Parameter '{parameter_name}' has {len(values)} values for "
+                    f"{len(names)} objects; missing entries will use defaults"
+                )
+
+        targets: list[AttachmentTarget] = []
+        for index, name in enumerate(names):
+            attach_topic = self._topic_at(attach_topics, index, name, "attach")
+            detach_topic = self._topic_at(detach_topics, index, name, "detach")
+            state_topic = self._topic_at(state_topics, index, name, "state")
+            contact_name = self._value_at(contact_names, index, name).lower()
+
+            attach_pub = self.create_publisher(Empty, attach_topic, command_qos)
+            detach_pub = self.create_publisher(Empty, detach_topic, command_qos)
+            self._state_subs.append(
+                self.create_subscription(
+                    String,
+                    state_topic,
+                    lambda msg, target_name=name: self._on_state(target_name, msg),
+                    10,
+                )
+            )
+            targets.append(
+                AttachmentTarget(
+                    name=name,
+                    contact_name=contact_name,
+                    attach_pub=attach_pub,
+                    detach_pub=detach_pub,
+                )
+            )
+
+        return targets
 
     def _publish_startup_detach(self) -> None:
         if self._startup_detach_remaining <= 0:
@@ -75,53 +138,102 @@ class AttachDetachController(Node):
             self._startup_timer.cancel()
             return
 
-        self._detach_pub.publish(Empty())
-        self._attached = False
+        for target in self._targets:
+            target.detach_pub.publish(Empty())
+
+        self._attached_target = None
         self._startup_detach_remaining -= 1
 
         if self._startup_detach_remaining == 0:
             self._startup_detaching = False
             self._startup_timer.cancel()
-            self.get_logger().info("Startup detach command sent")
-            if self._pending_attach:
-                self._publish_attach(
-                    "Queued wood cube contact detected; attaching joint"
-                )
+            self.get_logger().info("Startup detach commands sent")
+            if self._pending_attach_target:
+                target = self._target_by_name.get(self._pending_attach_target)
+                if target:
+                    self._publish_attach(
+                        target,
+                        f"Queued {target.name} contact detected; attaching joint",
+                    )
+                else:
+                    self._pending_attach_target = None
 
-    def _on_state(self, msg: String) -> None:
+    def _on_state(self, target_name: str, msg: String) -> None:
         state = msg.data.lower()
         if "detach" in state:
-            self._attached = False
+            if self._attached_target == target_name:
+                self._attached_target = None
         elif "attach" in state:
-            self._attached = True
+            if self._attached_target and self._attached_target != target_name:
+                target = self._target_by_name.get(target_name)
+                if target:
+                    target.detach_pub.publish(Empty())
+                    self.get_logger().warn(
+                        f"{target_name} reported attached while "
+                        f"{self._attached_target} is active; detaching {target_name}"
+                    )
+                return
+
+            self._attached_target = target_name
 
     def _on_contact(self, msg: Contacts) -> None:
-        if self._attached or not msg.contacts:
+        if self._attached_target or not msg.contacts:
             return
 
         for contact in msg.contacts:
-            if self._is_wood_cube_contact(contact):
+            target = self._contact_target(contact)
+            if target:
                 if self._startup_detaching:
-                    self._pending_attach = True
+                    if self._pending_attach_target is None:
+                        self._pending_attach_target = target.name
                     return
 
-                self._publish_attach("Wood cube contact detected; attaching joint")
+                self._publish_attach(
+                    target,
+                    f"{target.name} contact detected; attaching joint",
+                )
                 return
 
-    def _publish_attach(self, log_message: str) -> None:
-        self._attach_pub.publish(Empty())
-        self._attached = True
-        self._pending_attach = False
+    def _publish_attach(self, target: AttachmentTarget, log_message: str) -> None:
+        if self._attached_target and self._attached_target != target.name:
+            return
+
+        target.attach_pub.publish(Empty())
+        self._attached_target = target.name
+        self._pending_attach_target = None
         self.get_logger().info(log_message)
 
-    def _is_wood_cube_contact(self, contact) -> bool:
-        if not self._required_contact_name:
-            return True
+    def _contact_target(self, contact) -> AttachmentTarget | None:
+        names = [name.lower() for name in self._contact_names(contact)]
+        for target in self._targets:
+            if not target.contact_name:
+                return target
+            if any(target.contact_name in name for name in names):
+                return target
 
-        required_name = str(self._required_contact_name).lower()
-        return any(
-            required_name in name.lower() for name in self._contact_names(contact)
-        )
+        return None
+
+    def _string_list_parameter(self, parameter_name: str) -> list[str]:
+        value = self.get_parameter(parameter_name).value
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return [str(item).strip() for item in value if str(item).strip()]
+
+    @staticmethod
+    def _topic_at(values: list[str], index: int, object_name: str, suffix: str) -> str:
+        if index < len(values):
+            return values[index]
+
+        return f"/{object_name}/{suffix}"
+
+    @staticmethod
+    def _value_at(values: list[str], index: int, default: str) -> str:
+        if index < len(values):
+            return values[index]
+
+        return default
 
     @staticmethod
     def _contact_names(contact) -> Iterable[str]:

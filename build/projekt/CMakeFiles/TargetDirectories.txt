@@ -1,9 +1,0 @@
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/uninstall.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/projekt_uninstall.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/test.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/edit_cache.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/rebuild_cache.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/list_install_components.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/install.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/install/local.dir
-/home/telegdicsongor/scara_ws/SCARA_projekt/build/projekt/CMakeFiles/install/strip.dir
