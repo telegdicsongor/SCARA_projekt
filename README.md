@@ -111,7 +111,7 @@ sudo apt update
 sudo apt install -y \
   git curl lsb-release gnupg unzip \
   python3-pip python3-venv python3-colcon-common-extensions python3-rosdep \
-  python3-numpy python3-opencv \
+  python3-numpy python3-opencv python3-pyqt5 python3-pyqt5.qtsvg \
   ros-jazzy-ament-cmake \
   ros-jazzy-ament-index-python \
   ros-jazzy-control-msgs \
@@ -537,6 +537,23 @@ To see this graphically, open the debug image topic while `start_sorting.launch.
 
 ```bash
 ros2 run rqt_image_view rqt_image_view /sorting/yolo_debug_image
+```
+
+Run `rqt_image_view` from a terminal without the YOLO virtual environment activated if Qt cannot be found:
+
+```bash
+deactivate  # only if a virtual environment such as (tf) or .venv is active
+source /opt/ros/jazzy/setup.bash
+cd ~/projekt_ws/SCARA_projekt
+source install/setup.bash
+ros2 run rqt_image_view rqt_image_view /sorting/yolo_debug_image
+```
+
+If the GUI still reports `Could not find Qt binding`, install the Qt binding packages:
+
+```bash
+sudo apt update
+sudo apt install -y python3-pyqt5 python3-pyqt5.qtsvg ros-jazzy-rqt-image-view
 ```
 
 The debug image has three panels:
