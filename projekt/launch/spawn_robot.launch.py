@@ -414,18 +414,6 @@ def generate_launch_description():
     )
 
     # Relay node to republish camera_info to image/camera_info
-    relay_gripper_camera_info_node = Node(
-        package='topic_tools',
-        executable='relay',
-        name='relay_camera_info',
-        output='screen',
-        arguments=['gripper_camera/camera_info', 'gripper_camera/image/camera_info'],
-        parameters=[
-            {'use_sim_time': LaunchConfiguration('use_sim_time')},
-        ]
-    )
-
-    # Relay node to republish camera_info to image/camera_info
     relay_table_camera_info_node = Node(
         package='topic_tools',
         executable='relay',
@@ -435,11 +423,6 @@ def generate_launch_description():
         parameters=[
             {'use_sim_time': LaunchConfiguration('use_sim_time')},
         ]
-    )
-
-    joint_state_publisher_gui_node = Node(
-        package='joint_state_publisher_gui',
-        executable='joint_state_publisher_gui',
     )
 
     launchDescriptionObject = LaunchDescription()
@@ -477,8 +460,6 @@ def generate_launch_description():
     launchDescriptionObject.add_action(joint_state_publisher_node)
     launchDescriptionObject.add_action(spawn_urdf_node)
     launchDescriptionObject.add_action(gz_image_bridge_node)
-    #launchDescriptionObject.add_action(relay_gripper_camera_info_node)
     launchDescriptionObject.add_action(relay_table_camera_info_node)
-    #launchDescriptionObject.add_action(joint_state_publisher_gui_node)
 
     return launchDescriptionObject
