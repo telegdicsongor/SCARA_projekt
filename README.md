@@ -10,7 +10,31 @@ The project was made for the **MOGI Robotrendszerek laboratórium** and **Kognit
 
 The meshes for the cubes and collection bins were modelled in Blender and are used by Gazebo through the model files in [`projekt/meshes`](projekt/meshes).
 
-**Assumptions**
+## Contents
+
+- [Assumptions](#assumptions)
+- [Repository Layout](#repository-layout)
+- [Quick Start With The Pretrained Detector](#quick-start-with-the-pretrained-detector)
+- [Install Dependencies](#install-dependencies)
+- [Run Checks And Retesting](#run-checks-and-retesting)
+- [Launch Files](#launch-files)
+- [World Content](#world-content)
+- [Robot URDF](#robot-urdf)
+- [Sorting Pipeline](#sorting-pipeline)
+- [YOLO Cube Detector](#yolo-cube-detector)
+- [Image Processing And Mask Logic](#image-processing-and-mask-logic)
+- [Pixel To Robot Coordinates](#pixel-to-robot-coordinates)
+- [Inverse Kinematics](#inverse-kinematics)
+- [Pick And Place Logic](#pick-and-place-logic)
+- [Safety And Security Steps](#safety-and-security-steps)
+- [Attach And Detach Controller](#attach-and-detach-controller)
+- [Training Images](#training-images)
+- [Training YOLO](#training-yolo)
+- [Common Problems](#common-problems)
+- [Development Notes](#development-notes)
+- [Figure Files](#figure-files)
+
+## Assumptions
 
 This README assumes you already have a Linux system with ROS 2 installed. The project has been developed for **ROS 2 Jazzy on Ubuntu 24.04 with Gazebo Harmonic**. If you use another ROS 2 distribution, replace `jazzy` in the package names and check the matching Gazebo version. The URDF currently references the Jazzy `gz_ros2_control` plugin path, so Jazzy is the expected setup.
 
@@ -27,7 +51,9 @@ Official installation and reference pages used by this guide:
 - [Ultralytics training mode](https://docs.ultralytics.com/modes/train/)
 - [Ultralytics export mode](https://docs.ultralytics.com/modes/export/)
 
-**Repository Layout**
+ROS package links in the sections below point to their ROS Index pages.
+
+## Repository Layout
 
 ```text
 SCARA_projekt/
@@ -56,7 +82,7 @@ The default trained detector used by the sorting launch is:
 projekt/runs/detect/train-3/weights/best.onnx
 ```
 
-**Quick Start With The Pretrained Detector**
+## Quick Start With The Pretrained Detector
 
 Use this path if you only want to run the sorting demo with the pretrained neural network already included in the repository and you do not want to train a new model.
 
@@ -98,7 +124,7 @@ If the large Gazebo model pack is not already present after cloning, download it
 
 Extract or copy the model folders into `~/gazebo_models`. The launch files add this directory to `GZ_SIM_RESOURCE_PATH` automatically.
 
-**Install Dependencies**
+## Install Dependencies
 
 Start from a terminal with ROS 2 Jazzy available:
 
@@ -182,6 +208,8 @@ Install any dependency that is declared in [`projekt/package.xml`](projekt/packa
 rosdep install --from-paths projekt --ignore-src -r -y
 ```
 
+The ROS package is built with [`ament_cmake`](https://index.ros.org/p/ament_cmake/) and installed resources are found at runtime with [`ament_index_python`](https://index.ros.org/p/ament_index_python/).
+
 Create a Python virtual environment for YOLO training/export and ONNX Runtime inference. The `--system-site-packages` flag is important because the ROS 2 Python packages are installed by apt:
 
 ```bash
@@ -211,29 +239,9 @@ source .venv/bin/activate
 source install/setup.bash
 ```
 
-**Quick Run**
+## Run Checks And Retesting
 
-Terminal 1 starts Gazebo, RViz, the robot, controllers, the table camera bridge, and moves the robot to home:
-
-```bash
-source /opt/ros/jazzy/setup.bash
-cd ~/projekt_ws/SCARA_projekt
-source .venv/bin/activate
-source install/setup.bash
-ros2 launch projekt spawn_robot.launch.py
-```
-
-Wait until the robot reaches the home position. Terminal 2 starts the neural-network sorting pipeline:
-
-```bash
-source /opt/ros/jazzy/setup.bash
-cd ~/projekt_ws/SCARA_projekt
-source .venv/bin/activate
-source install/setup.bash
-ros2 launch projekt start_sorting.launch.py
-```
-
-The detector reads `/table_camera/image/compressed`, publishes one home-position detection snapshot to `/sorting/pixel_detections`, and the sorter moves every reachable cube to its bin. If a detected cube is outside the SCARA workspace, the sorter prints a warning and tries the next reachable detection. If no reachable cube remains, it returns to home.
+After the two quick-start launch commands are running, the detector reads `/table_camera/image/compressed`, publishes one home-position detection snapshot to `/sorting/pixel_detections`, and the sorter moves every reachable cube to its bin. If a detected cube is outside the SCARA workspace, the sorter prints a warning and tries the next reachable detection. If no reachable cube remains, it returns to home.
 
 Useful checks:
 
@@ -253,7 +261,9 @@ ros2 launch projekt start_sorting.launch.py
 
 This restarts `yolo_cube_detector.py`, takes a new home-position camera snapshot, publishes new pixel detections, and lets `scara_sorter.py` run another sorting sequence without respawning the robot or restarting Gazebo.
 
-**Launch Files**
+## Launch Files
+
+The launch files are ROS 2 Python launch descriptions built with [`launch`](https://index.ros.org/p/launch/) and [`launch_ros`](https://index.ros.org/p/launch_ros/).
 
 `check_urdf.launch.py`
 
@@ -261,7 +271,7 @@ This restarts `yolo_cube_detector.py`, takes a new home-position camera snapshot
 ros2 launch projekt check_urdf.launch.py
 ```
 
-This launch file uses the standard `urdf_launch/display.launch.py` helper. It loads [`projekt/urdf/scara.urdf`](projekt/urdf/scara.urdf), starts `robot_state_publisher`, starts `joint_state_publisher_gui` by default, and opens RViz with [`projekt/rviz/urdf.rviz`](projekt/rviz/urdf.rviz). The GUI sliders let you move `joint1`, `joint2`, and `joint3` without Gazebo, which is useful for checking the URDF frames, joint limits, TF tree, link origins, and visual/collision geometry.
+This launch file uses the standard [`urdf_launch`](https://index.ros.org/p/urdf_launch/) `display.launch.py` helper. It loads [`projekt/urdf/scara.urdf`](projekt/urdf/scara.urdf), starts [`robot_state_publisher`](https://index.ros.org/p/robot_state_publisher/), starts [`joint_state_publisher_gui`](https://index.ros.org/p/joint_state_publisher_gui/) by default, and opens [`rviz2`](https://index.ros.org/p/rviz2/) with [`projekt/rviz/urdf.rviz`](projekt/rviz/urdf.rviz). The GUI sliders let you move `joint1`, `joint2`, and `joint3` without Gazebo, which is useful for checking the URDF frames, joint limits, TF tree, link origins, and visual/collision geometry.
 
 ![URDF check in RViz](docs/images/check_urdf.launch.py.png)
 
@@ -284,7 +294,7 @@ This starts Gazebo Sim with [`projekt/worlds/world.sdf`](projekt/worlds/world.sd
 - the installed package parent directory
 - `~/gazebo_models`
 
-The world launch then includes `ros_gz_sim/launch/gz_sim.launch.py` with render settings for Gazebo Sim.
+The world launch then includes [`ros_gz_sim`](https://index.ros.org/p/ros_gz_sim/) `gz_sim.launch.py` with render settings for Gazebo Sim.
 
 ![World objects before spawning the robot](docs/images/world.launch.py.png)
 
@@ -294,15 +304,16 @@ The world launch then includes `ros_gz_sim/launch/gz_sim.launch.py` with render 
 ros2 launch projekt spawn_robot.launch.py
 ```
 
-This is the main simulation launch. It includes `world.launch.py`, expands the URDF with the default base pose, publishes `/robot_description`, spawns the robot in Gazebo through `ros_gz_sim create`, starts the Gazebo to ROS bridge, starts RViz, starts the table camera image bridge, and starts the arm controllers.
+This is the main simulation launch. It includes `world.launch.py`, expands the URDF with [`xacro`](https://index.ros.org/p/xacro/), publishes `/robot_description`, spawns the robot in Gazebo through `ros_gz_sim create`, starts the Gazebo to ROS bridge, starts RViz, starts the table camera image bridge, and starts the arm controllers.
 
 The most important nodes are:
 
 - `robot_state_publisher`: publishes the robot TF tree from the URDF and joint states.
 - `ros_gz_sim create`: inserts the SCARA robot into the Gazebo world from `/robot_description`.
-- `ros_gz_bridge parameter_bridge`: bridges clock, contact, detachable-joint, and camera-info topics from [`projekt/config/gz_bridge.yaml`](projekt/config/gz_bridge.yaml).
-- `ros_gz_image image_bridge`: bridges the Gazebo table camera image into ROS.
-- `controller_manager spawner`: starts `joint_state_broadcaster` and `arm_controller`.
+- [`ros_gz_bridge`](https://index.ros.org/p/ros_gz_bridge/) `parameter_bridge`: bridges clock with [`rosgraph_msgs`](https://index.ros.org/p/rosgraph_msgs/), contact through Gazebo message types, detachable-joint commands, and camera-info topics from [`projekt/config/gz_bridge.yaml`](projekt/config/gz_bridge.yaml).
+- [`ros_gz_image`](https://index.ros.org/p/ros_gz_image/) `image_bridge`: bridges the Gazebo table camera image into ROS.
+- [`controller_manager`](https://index.ros.org/p/controller_manager/) `spawner`: starts [`joint_state_broadcaster`](https://index.ros.org/p/joint_state_broadcaster/) and [`joint_trajectory_controller`](https://index.ros.org/p/joint_trajectory_controller/).
+- [`topic_tools`](https://index.ros.org/p/topic_tools/) `relay`: republishes table camera info for tools that expect it beside the image topic.
 - `controller_state_to_joint_states.py`: fallback joint-state relay if the broadcaster package is missing.
 - `attach_detach_controller.py`: starts after spawn so the cubes begin detached.
 
@@ -315,6 +326,8 @@ ros2 launch projekt spawn_robot.launch.py rviz:=false
 ros2 launch projekt spawn_robot.launch.py x:=0.0 y:=-0.3 z:=1.02 yaw:=1.5708
 ros2 launch projekt spawn_robot.launch.py fake_joint_states:=true
 ```
+
+`fake_joint_states:=true` starts [`joint_state_publisher`](https://index.ros.org/p/joint_state_publisher/) for URDF-only debugging.
 
 There is also a legacy static sorting mode:
 
@@ -364,7 +377,7 @@ ros2 launch projekt start_sorting.launch.py static_pixel_detections:=true
 
 The default launch masks the robot home area and the two bin areas with `mask_base_rectangles`. These rectangles are written in robot base coordinates, then projected into the camera image. This prevents the detector from trying to pick the robot itself or cubes that are already inside a bin.
 
-**World Content**
+## World Content
 
 [`world.sdf`](projekt/worlds/world.sdf) defines the physical environment:
 
@@ -389,7 +402,7 @@ The starting object poses are:
 
 The sorter loads bin positions from `world.sdf`, transforms them into the robot base frame, and uses them as drop targets. Cube positions are not loaded from `world.sdf` during neural-network sorting.
 
-**Robot URDF**
+## Robot URDF
 
 The robot is a SCARA robot, short for Selective Compliance Assembly Robot Arm. A SCARA arm is stiff vertically but compliant in the horizontal plane, which makes it suitable for fast pick-and-place tasks on a table.
 
@@ -409,7 +422,7 @@ The URDF also contains:
 - Inertial, visual, and collision geometry for each link.
 - A top-down table camera mounted to `base_footprint`.
 - `table_camera_link_optical`, used for camera projection.
-- A `ros2_control` Gazebo system with position command interfaces.
+- A [`ros2_control`](https://index.ros.org/p/ros2_control/) Gazebo system with position command interfaces through [`gz_ros2_control`](https://index.ros.org/p/gz_ros2_control/).
 - Two Gazebo detachable-joint plugins, one for each cube.
 - A contact sensor on the end-effector collision geometry.
 
@@ -430,7 +443,7 @@ The table camera is configured as a 640 by 480 RGB camera at 20 Hz:
 </sensor>
 ```
 
-**Sorting Pipeline**
+## Sorting Pipeline
 
 The neural-network sorting data flow is:
 
@@ -460,9 +473,11 @@ PixelDetectionArray:
   detections[]
 ```
 
-**YOLO Cube Detector**
+The motion command path uses [`control_msgs`](https://index.ros.org/p/control_msgs/) for `FollowJointTrajectory` actions and [`trajectory_msgs`](https://index.ros.org/p/trajectory_msgs/) for joint trajectory points.
 
-[`yolo_cube_detector.py`](projekt/scripts/yolo_cube_detector.py) subscribes to `/table_camera/image/compressed` and `/table_camera/camera_info`. It can load:
+## YOLO Cube Detector
+
+[`yolo_cube_detector.py`](projekt/scripts/yolo_cube_detector.py) is an [`rclpy`](https://index.ros.org/p/rclpy/) node that subscribes to [`sensor_msgs`](https://index.ros.org/p/sensor_msgs/) camera topics `/table_camera/image/compressed` and `/table_camera/camera_info`. It can load:
 
 - `.onnx` models with ONNX Runtime, used by default.
 - `.onnx` models with OpenCV DNN if selected manually.
@@ -499,7 +514,7 @@ if "steel" in label or "metal" in label:
 
 That class is then used to select `wood_collection_bin` or `steel_collection_bin`.
 
-**Image Processing And Mask Logic**
+## Image Processing And Mask Logic
 
 The image processing is intentionally simple around the neural network:
 
@@ -535,7 +550,7 @@ cv2.fillConvexPoly(mask, np.array(points, dtype=np.int32), 0)
 
 This matters for two security cases. First, when the robot is at home, it should not be detected as a cube. Second, once a cube is already in a bin, it should be treated as sorted and should not be picked again. If a cube in a bin is visually detected by YOLO, the bin mask removes it before it reaches the sorter.
 
-To see this graphically, open the debug image topic while `start_sorting.launch.py` is running:
+The node uses [`cv_bridge`](https://index.ros.org/p/cv_bridge/) to publish the OpenCV debug view as a ROS image. To see this graphically, open the debug image topic with [`rqt_image_view`](https://index.ros.org/p/rqt_image_view/) while `start_sorting.launch.py` is running:
 
 ```bash
 ros2 run rqt_image_view rqt_image_view /sorting/yolo_debug_image
@@ -576,12 +591,12 @@ ros2 launch projekt start_sorting.launch.py detector_debug_window:=true
 
 Use `detector_debug_image:=false` if you want to disable the debug topic.
 
-**Pixel To Robot Coordinates**
+## Pixel To Robot Coordinates
 
 The detector only publishes image pixels. [`scara_sorter.py`](projekt/scripts/scara_sorter.py) converts a detection center `(u, v)` into a base-frame point by using:
 
 - camera intrinsics from `/table_camera/camera_info`
-- TF between `table_camera_link_optical` and `base_link`
+- [`tf2_ros`](https://index.ros.org/p/tf2_ros/) transforms between `table_camera_link_optical` and `base_link`
 - the known cube-top plane `cube_top_z`
 
 The projection logic is in `project_pixel_to_plane`:
@@ -595,7 +610,7 @@ scale = (plane_z - origin_base[2]) / direction_base[2]
 
 The result is the point where the camera ray intersects the cube-top plane. This gives the `x` and `y` position used for inverse kinematics.
 
-**Inverse Kinematics**
+## Inverse Kinematics
 
 The SCARA arm uses a two-link planar inverse kinematics solution for `joint1` and `joint2`, then a fixed vertical position for travel, pick, and drop height.
 
@@ -626,7 +641,7 @@ That detection is skipped. If another reachable cube exists, the sorter continue
 
 ![Robot approaching a detected cube](docs/images/start_sorting.launch.py_2.png)
 
-**Pick And Place Logic**
+## Pick And Place Logic
 
 The full sorting motion sequence starts with the robot in home position. While the robot is home, the detector publishes the initial camera snapshot. The sorter then repeatedly selects the best remaining reachable candidate and runs one pick-and-place cycle.
 
@@ -671,7 +686,7 @@ Drop targets are selected from `target_bin` first. If that is missing, labels ar
 
 ![Cube sorted into bin](docs/images/start_sorting.launch.py_3.png)
 
-**Safety And Security Steps**
+## Safety And Security Steps
 
 Several checks keep the robot from doing unsafe or useless motions:
 
@@ -693,9 +708,9 @@ self.get_logger().warning(
 
 That warning is the message that appears when the robot cannot reach a detected cube.
 
-**Attach And Detach Controller**
+## Attach And Detach Controller
 
-Gazebo's detachable-joint plugin can attach a cube to the end effector when a message is sent to the cube's attach topic. The project does not blindly attach from software. Instead, [`attach_detach_controller.py`](projekt/scripts/attach_detach_controller.py) requires physical contact from Gazebo before requesting attachment.
+Gazebo's detachable-joint plugin can attach a cube to the end effector when a message is sent to the cube's attach topic. The project does not blindly attach from software. Instead, [`attach_detach_controller.py`](projekt/scripts/attach_detach_controller.py) requires physical contact from [`ros_gz_interfaces`](https://index.ros.org/p/ros_gz_interfaces/) contact messages before requesting attachment. Attach, detach, release, and state topics use [`std_msgs`](https://index.ros.org/p/std_msgs/) `Empty` and `String` messages.
 
 Important topics:
 
@@ -723,7 +738,7 @@ for contact in msg.contacts:
 
 Contact detection is important because it prevents the robot from attaching a cube that was only detected visually but was not actually touched. This matters when the detector is uncertain, when a cube has already moved, or when the robot is outside a reachable pose. On release, the controller repeatedly publishes detach messages and temporarily suppresses contact handling so the cube does not immediately reattach while it is being dropped into a bin.
 
-**Training Images**
+## Training Images
 
 The training helper is [`save_training_images.py`](projekt/scripts/save_training_images.py). It supports two workflows:
 
@@ -751,17 +766,7 @@ projekt/datasets/scara_cubes/
     └── val/
 ```
 
-Start the simulation:
-
-```bash
-source /opt/ros/jazzy/setup.bash
-cd ~/projekt_ws/SCARA_projekt
-source .venv/bin/activate
-source install/setup.bash
-ros2 launch projekt spawn_robot.launch.py
-```
-
-In another terminal, collect frames from the table camera:
+Start the simulation with the Terminal 1 command from [Quick Start With The Pretrained Detector](#quick-start-with-the-pretrained-detector). In another sourced terminal, collect frames from the table camera:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -807,7 +812,7 @@ For good training data, capture:
 - scenes with the robot in home pose, because detection is done at home
 - cubes in bins as background or ignored samples, because bin areas are masked during sorting
 
-**Training YOLO**
+## Training YOLO
 
 Activate the virtual environment:
 
@@ -892,7 +897,7 @@ find projekt/runs/detect -path "*/weights/best.pt" -print
 
 Then export that `best.pt` or pass the matching `best.onnx` path to `detector_model`.
 
-**Common Problems**
+## Common Problems
 
 `Dataset 'datasets/scara_cubes/data.yaml' does not exist`
 
@@ -959,7 +964,7 @@ ros2 topic hz /joint_states
 ros2 run tf2_ros tf2_echo base_link end_effector
 ```
 
-**Development Notes**
+## Development Notes
 
 Run the package tests:
 
@@ -978,9 +983,9 @@ colcon build --symlink-install --packages-select projekt
 source install/setup.bash
 ```
 
-Because `PixelDetection.msg` and `PixelDetectionArray.msg` are custom interfaces, a rebuild is required after message changes before Python nodes can import the generated message modules.
+Because `PixelDetection.msg` and `PixelDetectionArray.msg` are custom interfaces, [`rosidl_default_generators`](https://index.ros.org/p/rosidl_default_generators/) creates the Python message modules at build time and [`rosidl_default_runtime`](https://index.ros.org/p/rosidl_default_runtime/) provides them at runtime. Rebuild after message changes before Python nodes import the generated modules.
 
-**Figure Files**
+## Figure Files
 
 The README references the uploaded screenshots with these filenames:
 
