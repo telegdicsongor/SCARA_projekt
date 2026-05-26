@@ -56,6 +56,16 @@ def generate_launch_description():
         default_value="true",
         description="Publish one detection snapshot while the robot is home",
     )
+    detector_debug_image_arg = DeclareLaunchArgument(
+        "detector_debug_image",
+        default_value="true",
+        description="Publish a graphical YOLO debug image topic",
+    )
+    detector_debug_window_arg = DeclareLaunchArgument(
+        "detector_debug_window",
+        default_value="false",
+        description="Show a local OpenCV YOLO debug window",
+    )
     attach_controller_arg = DeclareLaunchArgument(
         "attach_controller",
         default_value="true",
@@ -118,6 +128,9 @@ def generate_launch_description():
                 "confidence_threshold": LaunchConfiguration("detector_confidence"),
                 "startup_delay": LaunchConfiguration("detector_startup_delay"),
                 "publish_once": LaunchConfiguration("detector_publish_once"),
+                "publish_debug_image": LaunchConfiguration("detector_debug_image"),
+                "debug_image_topic": "/sorting/yolo_debug_image",
+                "show_debug_window": LaunchConfiguration("detector_debug_window"),
                 "mask_plane_z": 0.045,
                 "mask_base_rectangles": (
                     "-0.08,0.08,-0.58,0.08;"
@@ -194,6 +207,8 @@ def generate_launch_description():
             detector_confidence_arg,
             detector_startup_delay_arg,
             detector_publish_once_arg,
+            detector_debug_image_arg,
+            detector_debug_window_arg,
             x_arg,
             y_arg,
             z_arg,

@@ -136,6 +136,7 @@ sudo apt install -y \
   ros-jazzy-rosidl-default-runtime \
   ros-jazzy-ros2-control \
   ros-jazzy-ros2-controllers \
+  ros-jazzy-rqt-image-view \
   ros-jazzy-rviz2 \
   ros-jazzy-sensor-msgs \
   ros-jazzy-std-msgs \
@@ -474,6 +475,8 @@ The launch file passes these important parameters:
 "target_bins": ["wood_collection_bin", "steel_collection_bin"],
 "confidence_threshold": LaunchConfiguration("detector_confidence"),
 "publish_once": LaunchConfiguration("detector_publish_once"),
+"publish_debug_image": LaunchConfiguration("detector_debug_image"),
+"debug_image_topic": "/sorting/yolo_debug_image",
 "mask_base_rectangles": (
     "-0.08,0.08,-0.58,0.08;"
     "0.02,0.28,0.18,0.42;"
@@ -529,6 +532,30 @@ cv2.fillConvexPoly(mask, np.array(points, dtype=np.int32), 0)
 ```
 
 This matters for two security cases. First, when the robot is at home, it should not be detected as a cube. Second, once a cube is already in a bin, it should be treated as sorted and should not be picked again. If a cube in a bin is visually detected by YOLO, the bin mask removes it before it reaches the sorter.
+
+To see this graphically, open the debug image topic while `start_sorting.launch.py` is running:
+
+```bash
+ros2 run rqt_image_view rqt_image_view /sorting/yolo_debug_image
+```
+
+The debug image has three panels:
+
+- raw camera image with red overlay where the mask ignores pixels
+- binary mask, where black means ignored and white means valid
+- masked YOLO result with bounding boxes, labels, confidence values, and center crosses
+
+![YOLO detector debug image](docs/images/detector_debug_image.png)
+
+The debug topic is enabled by default through `detector_debug_image:=true` and is republished periodically so it remains visible after the one-shot detection snapshot. You can also view it in RViz by adding an `Image` display and selecting `/sorting/yolo_debug_image`.
+
+For a local OpenCV popup window instead of a ROS image topic, launch sorting with:
+
+```bash
+ros2 launch projekt start_sorting.launch.py detector_debug_window:=true
+```
+
+Use `detector_debug_image:=false` if you want to disable the debug topic.
 
 **Pixel To Robot Coordinates**
 

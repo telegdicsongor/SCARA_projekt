@@ -9,13 +9,19 @@ from typing import Sequence
 
 from ament_index_python.packages import get_package_share_directory
 import cv2
+from cv_bridge import CvBridge
 import numpy as np
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
-from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos import (
+    DurabilityPolicy,
+    QoSProfile,
+    ReliabilityPolicy,
+    qos_profile_sensor_data,
+)
 from rclpy.time import Time
-from sensor_msgs.msg import CameraInfo, CompressedImage
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 from std_msgs.msg import Header
 from tf2_ros import Buffer, ConnectivityException, ExtrapolationException
 from tf2_ros import LookupException, TransformListener
@@ -326,6 +332,11 @@ class YoloCubeDetector(Node):
         self.declare_parameter("mask_rectangles", "")
         self.declare_parameter("mask_base_rectangles", "")
         self.declare_parameter("mask_plane_z", 0.045)
+        self.declare_parameter("publish_debug_image", True)
+        self.declare_parameter("debug_image_topic", "/sorting/yolo_debug_image")
+        self.declare_parameter("debug_republish_period", 1.0)
+        self.declare_parameter("show_debug_window", False)
+        self.declare_parameter("debug_window_name", "YOLO cube detector debug")
 
         self._base_frame = self.get_parameter("base_frame").value
         self._camera_frame = self.get_parameter("camera_frame").value
@@ -347,13 +358,18 @@ class YoloCubeDetector(Node):
             "mask_base_rectangles",
         )
         self._mask_plane_z = float(self.get_parameter("mask_plane_z").value)
+        self._publish_debug_image = self._bool_parameter("publish_debug_image")
+        self._show_debug_window = self._bool_parameter("show_debug_window")
+        self._debug_window_name = str(self.get_parameter("debug_window_name").value)
         self._camera_info: CameraInfo | None = None
         self._warned_mask_camera_info = False
         self._warned_mask_tf = False
         self._last_detection_time = 0.0
         self._start_time = time.monotonic()
         self._published_snapshot = False
+        self._last_debug_image_msg: Image | None = None
 
+        self._bridge = CvBridge()
         self._detector = self._create_detector()
         self._tf_buffer = Buffer()
         self._tf_listener = TransformListener(self._tf_buffer, self)
@@ -362,6 +378,26 @@ class YoloCubeDetector(Node):
             self.get_parameter("detections_topic").value,
             10,
         )
+        self._debug_image_pub = None
+        self._debug_timer = None
+        if self._publish_debug_image:
+            debug_qos = QoSProfile(
+                depth=1,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                reliability=ReliabilityPolicy.RELIABLE,
+            )
+            self._debug_image_pub = self.create_publisher(
+                Image,
+                self.get_parameter("debug_image_topic").value,
+                debug_qos,
+            )
+            debug_republish_period = float(
+                self.get_parameter("debug_republish_period").value
+            )
+            if debug_republish_period > 0.0:
+                self._debug_timer = self.create_timer(
+                    debug_republish_period, self._republish_debug_image
+                )
         self._image_sub = self.create_subscription(
             CompressedImage,
             self.get_parameter("compressed_image_topic").value,
@@ -379,6 +415,11 @@ class YoloCubeDetector(Node):
             "YOLO cube detector subscribed to "
             f"{self.get_parameter('compressed_image_topic').value}"
         )
+        if self._publish_debug_image:
+            self.get_logger().info(
+                "YOLO debug image topic: "
+                f"{self.get_parameter('debug_image_topic').value}"
+            )
 
     def _create_detector(self):
         model_path = self._resolve_model_path(self.get_parameter("model_path").value)
@@ -483,6 +524,9 @@ class YoloCubeDetector(Node):
         )[: self._max_detections]
 
         self._publish_detections(msg, detections)
+        self._publish_detection_debug_image(
+            msg, frame, mask, inference_frame, detections
+        )
         self._last_detection_time = time.monotonic()
         if self._publish_once:
             self._published_snapshot = True
@@ -592,6 +636,137 @@ class YoloCubeDetector(Node):
             filtered.append(detection)
         return filtered
 
+    def _publish_detection_debug_image(
+        self,
+        image_msg: CompressedImage,
+        frame: np.ndarray,
+        mask: np.ndarray,
+        inference_frame: np.ndarray,
+        detections: Sequence[DetectionBox],
+    ) -> None:
+        if not self._publish_debug_image and not self._show_debug_window:
+            return
+
+        debug_image = self._compose_debug_image(
+            frame, mask, inference_frame, detections
+        )
+
+        if self._publish_debug_image and self._debug_image_pub is not None:
+            msg = self._bridge.cv2_to_imgmsg(debug_image, encoding="bgr8")
+            msg.header = Header()
+            msg.header.stamp = image_msg.header.stamp
+            msg.header.frame_id = self._camera_frame or image_msg.header.frame_id
+            self._last_debug_image_msg = msg
+            self._debug_image_pub.publish(msg)
+
+        if self._show_debug_window:
+            cv2.imshow(self._debug_window_name, debug_image)
+            cv2.waitKey(1)
+
+    def _republish_debug_image(self) -> None:
+        if self._debug_image_pub is None or self._last_debug_image_msg is None:
+            return
+        self._debug_image_pub.publish(self._last_debug_image_msg)
+
+    def _compose_debug_image(
+        self,
+        frame: np.ndarray,
+        mask: np.ndarray,
+        inference_frame: np.ndarray,
+        detections: Sequence[DetectionBox],
+    ) -> np.ndarray:
+        raw_panel = frame.copy()
+        mask_panel = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+        result_panel = inference_frame.copy()
+
+        masked_overlay = frame.copy()
+        masked_overlay[mask == 0] = (0, 0, 180)
+        raw_panel = cv2.addWeighted(raw_panel, 0.72, masked_overlay, 0.28, 0.0)
+
+        for detection in detections:
+            self._draw_detection(result_panel, detection)
+
+        self._draw_title(raw_panel, "raw camera + red ignored mask")
+        self._draw_title(mask_panel, "binary mask: black ignored")
+        self._draw_title(result_panel, f"masked YOLO result: {len(detections)}")
+
+        return np.hstack((raw_panel, mask_panel, result_panel))
+
+    def _draw_detection(self, frame: np.ndarray, detection: DetectionBox) -> None:
+        color = self._class_color(detection)
+        x_min = self._clamp_int(detection.x_min, 0, frame.shape[1] - 1)
+        y_min = self._clamp_int(detection.y_min, 0, frame.shape[0] - 1)
+        x_max = self._clamp_int(detection.x_max, 0, frame.shape[1] - 1)
+        y_max = self._clamp_int(detection.y_max, 0, frame.shape[0] - 1)
+        center_x, center_y = detection.center
+        center = (
+            self._clamp_int(center_x, 0, frame.shape[1] - 1),
+            self._clamp_int(center_y, 0, frame.shape[0] - 1),
+        )
+
+        cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), color, 2)
+        cv2.drawMarker(
+            frame,
+            center,
+            color,
+            markerType=cv2.MARKER_CROSS,
+            markerSize=12,
+            thickness=2,
+        )
+        label = (
+            f"{self._object_class_for(detection)} "
+            f"{detection.confidence:.2f}"
+        )
+        self._draw_label(frame, label, (x_min, max(18, y_min - 6)), color)
+
+    def _draw_title(self, frame: np.ndarray, title: str) -> None:
+        cv2.rectangle(frame, (0, 0), (frame.shape[1], 30), (0, 0, 0), -1)
+        cv2.putText(
+            frame,
+            title,
+            (8, 21),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.55,
+            (255, 255, 255),
+            1,
+            cv2.LINE_AA,
+        )
+
+    @staticmethod
+    def _draw_label(
+        frame: np.ndarray, text: str, origin: tuple[int, int], color: tuple[int, int, int]
+    ) -> None:
+        text_size, baseline = cv2.getTextSize(
+            text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1
+        )
+        x, y = origin
+        y = max(text_size[1] + baseline + 2, y)
+        cv2.rectangle(
+            frame,
+            (x, y - text_size[1] - baseline - 4),
+            (x + text_size[0] + 6, y + baseline),
+            color,
+            -1,
+        )
+        cv2.putText(
+            frame,
+            text,
+            (x + 3, y - 3),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.5,
+            (0, 0, 0),
+            1,
+            cv2.LINE_AA,
+        )
+
+    def _class_color(self, detection: DetectionBox) -> tuple[int, int, int]:
+        object_class = self._object_class_for(detection)
+        if object_class == "wood":
+            return (0, 190, 255)
+        if object_class == "steel":
+            return (255, 180, 0)
+        return (0, 255, 0)
+
     def _publish_detections(
         self, image_msg: CompressedImage, detections: Sequence[DetectionBox]
     ) -> None:
@@ -692,6 +867,11 @@ class YoloCubeDetector(Node):
     @staticmethod
     def _clamp_int(value: float, minimum: int, maximum: int) -> int:
         return max(minimum, min(maximum, int(round(value))))
+
+    def destroy_node(self) -> bool:
+        if self._show_debug_window:
+            cv2.destroyAllWindows()
+        return super().destroy_node()
 
 
 def main(args=None) -> None:
