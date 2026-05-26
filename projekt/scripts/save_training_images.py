@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 
+from ament_index_python.packages import PackageNotFoundError, get_package_share_directory
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 import rclpy
@@ -19,9 +20,23 @@ CLASS_NAMES = ["wood_cube", "steel_cube"]
 LABEL_TO_CLASS_ID = {name: index for index, name in enumerate(CLASS_NAMES)}
 BACKGROUND_LABELS = {"not_cube", "background", "not_cubes"}
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png"}
-DEFAULT_DATASET_ROOT = (
-    "/home/veszpo/projekt_ws/SCARA_projekt/projekt/datasets/scara_cubes"
-)
+
+
+def default_dataset_root() -> str:
+    source_tree_root = Path(__file__).resolve().parents[1]
+    source_tree_dataset = source_tree_root / "datasets" / "scara_cubes"
+    if (source_tree_root / "CMakeLists.txt").is_file():
+        return str(source_tree_dataset)
+
+    try:
+        return str(
+            Path(get_package_share_directory("projekt")) / "datasets" / "scara_cubes"
+        )
+    except PackageNotFoundError:
+        return str(source_tree_dataset)
+
+
+DEFAULT_DATASET_ROOT = default_dataset_root()
 
 
 def resolve_path(path_value: str) -> Path:
@@ -49,7 +64,7 @@ def ensure_yolo_dataset(save_root: Path) -> None:
     (save_root / "data.yaml").write_text(
         "\n".join(
             [
-                f"path: {save_root}",
+                'path: ""',
                 "train: images/train",
                 "val: images/val",
                 "names:",
