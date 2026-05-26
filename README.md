@@ -6,7 +6,7 @@ This repository contains a ROS 2 and Gazebo Sim project for a small SCARA sortin
 
 The project was made for the **MOGI Robotrendszerek laboratórium** and **Kognitív robotika** subjects by **Csongor Telegdi** and **Zsombor Veszprémi**.
 
-![Final sorting scene](docs/images/start_sorting.launch.py_3.png)
+![Gazebo, RViz, and table camera](docs/images/spawn_robot.launch.py.png)
 
 The meshes for the cubes and collection bins were modelled in Blender and are used by Gazebo through the model files in [`projekt/meshes`](projekt/meshes).
 
