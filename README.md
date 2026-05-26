@@ -990,6 +990,7 @@ docs/images/check_urdf.launch.py.png
 docs/images/save_training_images.py.png
 docs/images/spawn_robot.launch.py.png
 docs/images/world.launch.py.png
+docs/images/detector_debug_image.png
 ```
 
 If the images do not appear on GitHub, check that the files above are committed exactly with those names. GitHub image links are case-sensitive.
