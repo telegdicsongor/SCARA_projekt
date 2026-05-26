@@ -21,6 +21,11 @@ def generate_launch_description():
         default_value="true",
         description="Publish world.sdf cube detections until the neural network node exists",
     )
+    attach_controller_arg = DeclareLaunchArgument(
+        "attach_controller",
+        default_value="true",
+        description="Start the contact-based cube attach controller",
+    )
     x_arg = DeclareLaunchArgument(
         "x", default_value="0.0", description="x coordinate of the fixed robot base"
     )
@@ -80,9 +85,35 @@ def generate_launch_description():
                 "home_joint2": 0.0,
                 "home_joint3": 0.05,
                 "travel_joint3": 0.05,
-                "direct_attach": True,
+                "direct_attach": False,
                 "attach_object_names": ["wood_cube_5cm", "steel_cube_5cm"],
                 "attach_topics": ["/wood_cube_5cm/attach", "/steel_cube_5cm/attach"],
+            }
+        ],
+    )
+
+    attach_detach_controller_node = Node(
+        package="projekt",
+        executable="attach_detach_controller.py",
+        name="attach_detach_controller",
+        output="screen",
+        condition=IfCondition(LaunchConfiguration("attach_controller")),
+        parameters=[
+            {
+                "use_sim_time": False,
+                "contact_topic": "/contact_end_effector",
+                "object_names": ["wood_cube_5cm", "steel_cube_5cm"],
+                "attach_topics": ["/wood_cube_5cm/attach", "/steel_cube_5cm/attach"],
+                "detach_topics": ["/wood_cube_5cm/detach", "/steel_cube_5cm/detach"],
+                "state_topics": ["/wood_cube_5cm/state", "/steel_cube_5cm/state"],
+                "required_contact_names": ["wood_cube_5cm", "steel_cube_5cm"],
+                "attached_object_topic": "/gripper/attached_object",
+                "release_topic": "/gripper/release",
+                "startup_detach_count": 20,
+                "startup_detach_period": 0.25,
+                "release_contact_suppression_time": 2.0,
+                "release_detach_count": 8,
+                "release_detach_period": 0.1,
             }
         ],
     )
@@ -96,6 +127,8 @@ def generate_launch_description():
             y_arg,
             z_arg,
             yaw_arg,
+            attach_controller_arg,
+            attach_detach_controller_node,
             static_detector_node,
             sorter_node,
         ]

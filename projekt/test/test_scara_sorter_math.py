@@ -1,6 +1,7 @@
 import math
 from pathlib import Path
 import sys
+import threading
 import types
 
 import pytest
@@ -17,7 +18,10 @@ if "projekt.msg" not in sys.modules:
     projekt_module.msg = msg_module
     sys.modules["projekt.msg"] = msg_module
 
+import scara_sorter  # noqa: E402
+from attach_detach_controller import AttachDetachController  # noqa: E402
 from scara_sorter import (  # noqa: E402
+    PickCandidate,
     RigidTransform,
     ScaraKinematics,
     ScaraSorter,
@@ -98,3 +102,52 @@ def test_bin_pose_conversion_matches_current_world_centers() -> None:
 
     assert wood_bin[:2] == pytest.approx((0.15, 0.30), abs=1e-4)
     assert steel_bin[:2] == pytest.approx((0.15, -0.30), abs=1e-4)
+
+
+def test_wait_for_attached_releases_unexpected_object(monkeypatch) -> None:
+    class FakeLogger:
+        def warning(self, _message: str) -> None:
+            pass
+
+    class FakePublisher:
+        def __init__(self) -> None:
+            self.count = 0
+
+        def publish(self, _msg) -> None:
+            self.count += 1
+
+    detection = sys.modules["projekt.msg"].PixelDetection()
+    detection.object_id = "wood_cube_5cm"
+    detection.object_class = "wood"
+    candidate = PickCandidate(
+        detection=detection,
+        key="wood_cube_5cm",
+        x=0.48,
+        y=0.12,
+        joints=(0.0, 0.0),
+    )
+
+    sorter = object.__new__(ScaraSorter)
+    sorter._state_lock = threading.Lock()
+    sorter._attached_object = "steel_cube_5cm"
+    sorter._attach_pubs = {
+        "wood_cube_5cm": object(),
+        "steel_cube_5cm": object(),
+    }
+    sorter._release_pub = FakePublisher()
+    sorter._release_timeout = 0.0
+    sorter.get_logger = lambda: FakeLogger()
+    sorter._wait_for_released = lambda _timeout: True
+    monkeypatch.setattr(scara_sorter.rclpy, "ok", lambda: True)
+
+    assert not sorter._wait_for_attached(1.0, candidate)
+    assert sorter._release_pub.count == 1
+
+
+def test_detachable_joint_state_parser_accepts_boolean_strings() -> None:
+    assert AttachDetachController._state_is_attached("true")
+    assert AttachDetachController._state_is_attached("1")
+    assert AttachDetachController._state_is_attached("attached")
+    assert AttachDetachController._state_is_detached("false")
+    assert AttachDetachController._state_is_detached("0")
+    assert AttachDetachController._state_is_detached("detached")

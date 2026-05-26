@@ -242,7 +242,7 @@
     <gazebo reference="end_effector">
         <sensor name='sensor_contact' type='contact'>
             <contact>
-                <collision>end_effector_collision</collision>
+                <collision>end_effector_collision_collision</collision>
                 <topic>/contact_end_effector</topic>
             </contact>
             <always_on>1</always_on>

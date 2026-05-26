@@ -230,7 +230,7 @@ class ScaraSorter(Node):
         )
         self.declare_parameter("gripper_release_topic", "/gripper/release")
         self.declare_parameter("gripper_attached_topic", "/gripper/attached_object")
-        self.declare_parameter("direct_attach", True)
+        self.declare_parameter("direct_attach", False)
         self.declare_parameter(
             "attach_object_names", ["wood_cube_5cm", "steel_cube_5cm"]
         )
@@ -269,7 +269,7 @@ class ScaraSorter(Node):
         self.declare_parameter("home_joint2", 0.0)
         self.declare_parameter("home_joint3", 0.05)
         self.declare_parameter("travel_joint3", 0.05)
-        self.declare_parameter("pick_joint3", -0.105)
+        self.declare_parameter("pick_joint3", -0.115)
         self.declare_parameter("drop_joint3", -0.08)
         self.declare_parameter("move_duration", 2.0)
         self.declare_parameter("vertical_duration", 1.0)
@@ -529,7 +529,7 @@ class ScaraSorter(Node):
                 f"({candidate.x:.3f}, {candidate.y:.3f})"
             )
             self.get_logger().info(
-                f"Dropping {object_label} at bin center base XY "
+                f"Drop target for {object_label}: bin center base XY "
                 f"({drop_point[0]:.3f}, {drop_point[1]:.3f})"
             )
 
@@ -546,11 +546,12 @@ class ScaraSorter(Node):
             time.sleep(self._settle_time)
             if not self._wait_for_attached(self._attach_timeout, candidate):
                 self.get_logger().warning(
-                    f"No attachment detected for {object_label}; lifting and retrying later"
+                    f"No attachment detected for {object_label}; skipping this detection"
                 )
                 self._move_joints(
                     pick_above, self._vertical_duration, "lift after missed attach"
                 )
+                self._mark_candidate_skipped(candidate)
                 return
 
             if not self._move_joints(pick_above, self._vertical_duration, "lift"):
@@ -672,6 +673,10 @@ class ScaraSorter(Node):
 
         return None
 
+    def _mark_candidate_skipped(self, candidate: PickCandidate) -> None:
+        with self._state_lock:
+            self._completed_keys.add(candidate.key)
+
     def _drop_point_for(self, candidate: PickCandidate) -> tuple[float, float]:
         target_bin = candidate.detection.target_bin.strip()
         if target_bin:
@@ -715,19 +720,23 @@ class ScaraSorter(Node):
         self, timeout: float, candidate: PickCandidate | None = None
     ) -> bool:
         deadline = time.monotonic() + timeout
-        next_direct_attach = time.monotonic()
-        direct_attach_announced = False
+        expected_target = (
+            self._direct_attach_target(candidate) if candidate is not None else None
+        )
         while rclpy.ok() and time.monotonic() < deadline:
             with self._state_lock:
-                if self._attached_object:
+                attached_object = self._attached_object.strip()
+
+            if attached_object:
+                if expected_target is None or attached_object == expected_target:
                     return True
-            now = time.monotonic()
-            if candidate is not None and now >= next_direct_attach:
-                self._command_direct_attach(
-                    candidate, announce=not direct_attach_announced
+                self.get_logger().warning(
+                    f"Expected {expected_target} while picking {candidate.key}, "
+                    f"but {attached_object} attached; releasing it"
                 )
-                direct_attach_announced = True
-                next_direct_attach = now + self._direct_attach_period
+                self._release_pub.publish(Empty())
+                self._wait_for_released(self._release_timeout)
+                return False
             time.sleep(0.05)
         return False
 

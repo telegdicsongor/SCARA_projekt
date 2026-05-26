@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 from typing import Iterable
 
 import rclpy
@@ -46,6 +47,9 @@ class AttachDetachController(Node):
         self.declare_parameter("release_topic", "/gripper/release")
         self.declare_parameter("startup_detach_count", 20)
         self.declare_parameter("startup_detach_period", 0.25)
+        self.declare_parameter("release_contact_suppression_time", 2.0)
+        self.declare_parameter("release_detach_count", 8)
+        self.declare_parameter("release_detach_period", 0.1)
 
         self._contact_topic = self.get_parameter("contact_topic").value
         self._startup_detach_remaining = int(
@@ -54,10 +58,22 @@ class AttachDetachController(Node):
         startup_detach_period = float(
             self.get_parameter("startup_detach_period").value
         )
+        self._release_contact_suppression_time = float(
+            self.get_parameter("release_contact_suppression_time").value
+        )
+        self._release_detach_count = max(
+            1, int(self.get_parameter("release_detach_count").value)
+        )
+        release_detach_period = float(
+            self.get_parameter("release_detach_period").value
+        )
 
         self._attached_target: str | None = None
         self._startup_detaching = self._startup_detach_remaining > 0
         self._pending_attach_target: str | None = None
+        self._suppress_contact_until = 0.0
+        self._release_detach_targets: list[AttachmentTarget] = []
+        self._release_detach_remaining = 0
         self._state_subs = []
         self._command_subs = []
 
@@ -86,6 +102,10 @@ class AttachDetachController(Node):
         self._startup_timer = self.create_timer(
             startup_detach_period, self._publish_startup_detach
         )
+        self._release_detach_timer = self.create_timer(
+            release_detach_period, self._publish_release_detach
+        )
+        self._release_detach_timer.cancel()
         self._publish_startup_detach()
 
         target_names = ", ".join(target.name for target in self._targets)
@@ -177,18 +197,24 @@ class AttachDetachController(Node):
                 if target:
                     self._publish_attach(
                         target,
-                        f"Queued {target.name} contact detected; attaching joint",
+                        f"Queued {target.name} contact detected; requesting attach joint",
                     )
                 else:
                     self._pending_attach_target = None
 
     def _on_state(self, target_name: str, msg: String) -> None:
-        state = msg.data.lower()
-        if "detach" in state:
+        state = msg.data.strip().lower()
+        if self._state_is_detached(state):
             if self._attached_target == target_name:
                 self._attached_target = None
                 self._publish_attached_state()
-        elif "attach" in state:
+            return
+
+        if self._state_is_attached(state):
+            if self._attached_target == target_name:
+                self._publish_attached_state()
+                return
+
             if self._attached_target and self._attached_target != target_name:
                 target = self._target_by_name.get(target_name)
                 if target:
@@ -199,27 +225,44 @@ class AttachDetachController(Node):
                     )
                 return
 
-            self._attached_target = target_name
-            self._publish_attached_state()
+            if self._pending_attach_target == target_name:
+                self._attached_target = target_name
+                self._pending_attach_target = None
+                self._publish_attached_state()
+                return
+
+            if not self._attached_target:
+                target = self._target_by_name.get(target_name)
+                if target:
+                    target.detach_pub.publish(Empty())
+                    self.get_logger().warn(
+                        f"{target_name} reported attached without contact; detaching"
+                    )
+                return
+
+        if state:
+            self.get_logger().warn(
+                f"Ignoring unknown detachable joint state for {target_name}: {state}"
+            )
 
     def _on_attach_command(self, target_name: str, _msg: Empty) -> None:
         if self._startup_detaching:
-            if self._pending_attach_target is None:
-                self._pending_attach_target = target_name
             return
 
-        if self._attached_target and self._attached_target != target_name:
+        if (
+            self._attached_target == target_name
+            or self._pending_attach_target == target_name
+        ):
             return
 
-        if self._attached_target != target_name:
-            self.get_logger().info(f"Attach command observed for {target_name}")
-
-        self._attached_target = target_name
-        self._pending_attach_target = None
-        self._publish_attached_state()
+        self.get_logger().warn(
+            f"Ignoring direct attach command for {target_name}; waiting for contact"
+        )
 
     def _on_contact(self, msg: Contacts) -> None:
-        if self._attached_target or not msg.contacts:
+        if time.monotonic() < self._suppress_contact_until:
+            return
+        if self._attached_target or self._pending_attach_target or not msg.contacts:
             return
 
         for contact in msg.contacts:
@@ -232,39 +275,69 @@ class AttachDetachController(Node):
 
                 self._publish_attach(
                     target,
-                    f"{target.name} contact detected; attaching joint",
+                    f"{target.name} contact detected; requesting attach joint",
                 )
                 return
 
     def _publish_attach(self, target: AttachmentTarget, log_message: str) -> None:
         if self._attached_target and self._attached_target != target.name:
             return
+        if self._pending_attach_target and self._pending_attach_target != target.name:
+            return
 
         target.attach_pub.publish(Empty())
-        self._attached_target = target.name
-        self._pending_attach_target = None
-        self._publish_attached_state()
+        self._pending_attach_target = target.name
         self.get_logger().info(log_message)
 
     def _on_release(self, _msg: Empty) -> None:
-        if self._attached_target:
-            target = self._target_by_name.get(self._attached_target)
+        active_target = self._attached_target or self._pending_attach_target
+        if active_target:
+            target = self._target_by_name.get(active_target)
             if target:
-                target.detach_pub.publish(Empty())
+                self._start_release_detach([target])
                 self.get_logger().info(f"Release requested; detaching {target.name}")
         else:
-            for target in self._targets:
-                target.detach_pub.publish(Empty())
+            self._start_release_detach(self._targets)
             self.get_logger().info("Release requested; broadcasting detach")
 
         self._attached_target = None
         self._pending_attach_target = None
         self._publish_attached_state()
 
+    def _start_release_detach(self, targets: Iterable[AttachmentTarget]) -> None:
+        self._release_detach_targets = list(targets)
+        self._release_detach_remaining = self._release_detach_count
+        self._suppress_contact_until = (
+            time.monotonic() + self._release_contact_suppression_time
+        )
+        self._publish_release_detach()
+        if self._release_detach_remaining > 0:
+            self._release_detach_timer.reset()
+
+    def _publish_release_detach(self) -> None:
+        if self._release_detach_remaining <= 0 or not self._release_detach_targets:
+            self._release_detach_timer.cancel()
+            return
+
+        for target in self._release_detach_targets:
+            target.detach_pub.publish(Empty())
+
+        self._release_detach_remaining -= 1
+        if self._release_detach_remaining <= 0:
+            self._release_detach_timer.cancel()
+
     def _publish_attached_state(self) -> None:
         msg = String()
         msg.data = self._attached_target or ""
         self._attached_state_pub.publish(msg)
+
+    @staticmethod
+    def _state_is_attached(state: str) -> bool:
+        return state in {"1", "true", "attached"} or "attach" in state
+
+    @staticmethod
+    def _state_is_detached(state: str) -> bool:
+        return state in {"0", "false", "detached"} or "detach" in state
 
     def _contact_target(self, contact) -> AttachmentTarget | None:
         names = [name.lower() for name in self._contact_names(contact)]

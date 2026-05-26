@@ -307,7 +307,10 @@ def generate_launch_description():
              'attached_object_topic': '/gripper/attached_object',
              'release_topic': '/gripper/release',
              'startup_detach_count': 20,
-             'startup_detach_period': 0.25},
+             'startup_detach_period': 0.25,
+             'release_contact_suppression_time': 2.0,
+             'release_detach_count': 8,
+             'release_detach_period': 0.1},
         ],
     )
 
@@ -366,7 +369,7 @@ def generate_launch_description():
              'home_joint2': 0.0,
              'home_joint3': 0.05,
              'travel_joint3': 0.05,
-             'direct_attach': True,
+             'direct_attach': False,
              'attach_object_names': ['wood_cube_5cm', 'steel_cube_5cm'],
              'attach_topics': ['/wood_cube_5cm/attach', '/steel_cube_5cm/attach']},
         ],
