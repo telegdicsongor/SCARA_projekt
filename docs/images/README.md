@@ -2,13 +2,12 @@
 
 The main README references the uploaded project screenshots with these filenames:
 
-- `final_sorting_scene.png`
-- `pick_motion.png`
-- `input_scene.png`
-- `check_urdf_rviz.png`
-- `training_collector.png`
-- `gazebo_rviz_camera.png`
-- `world_only_scene.png`
-- `sorted_cube_in_bin.png`
+- `start_sorting.launch.py_3.png`
+- `start_sorting.launch.py_2.png`
+- `start_sorting.launch.py_1.png`
+- `check_urdf.launch.py.png`
+- `save_training_images.py.png`
+- `spawn_robot.launch.py.png`
+- `world.launch.py.png`
 
-Save the screenshots into this directory with those names so they render in the Markdown file.
+Keep the filenames exactly as written here so they render in the root README when the repository is opened in a browser.

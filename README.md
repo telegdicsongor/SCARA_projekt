@@ -6,7 +6,7 @@ This repository contains a ROS 2 and Gazebo Sim project for a small SCARA sortin
 
 The project was made for the **MOGI Robotrendszerek laboratórium** and **Kognitív robotika** subjects by **Csongor Telegdi** and **Zsombor Veszprémi**.
 
-![Final sorting scene](docs/images/final_sorting_scene.png)
+![Final sorting scene](docs/images/start_sorting.launch.py_3.png)
 
 The meshes for the cubes and collection bins were modelled in Blender and are used by Gazebo through the model files in [`projekt/meshes`](projekt/meshes).
 
@@ -224,7 +224,7 @@ ros2 launch projekt check_urdf.launch.py
 
 This launch file uses the standard `urdf_launch/display.launch.py` helper. It loads [`projekt/urdf/scara.urdf`](projekt/urdf/scara.urdf), starts `robot_state_publisher`, starts `joint_state_publisher_gui` by default, and opens RViz with [`projekt/rviz/urdf.rviz`](projekt/rviz/urdf.rviz). The GUI sliders let you move `joint1`, `joint2`, and `joint3` without Gazebo, which is useful for checking the URDF frames, joint limits, TF tree, link origins, and visual/collision geometry.
 
-![URDF check in RViz](docs/images/check_urdf_rviz.png)
+![URDF check in RViz](docs/images/check_urdf.launch.py.png)
 
 Optional arguments:
 
@@ -247,7 +247,7 @@ This starts Gazebo Sim with [`projekt/worlds/world.sdf`](projekt/worlds/world.sd
 
 The world launch then includes `ros_gz_sim/launch/gz_sim.launch.py` with render settings for Gazebo Sim.
 
-![World objects before spawning the robot](docs/images/world_only_scene.png)
+![World objects before spawning the robot](docs/images/world.launch.py.png)
 
 `spawn_robot.launch.py`
 
@@ -267,7 +267,7 @@ The most important nodes are:
 - `controller_state_to_joint_states.py`: fallback joint-state relay if the broadcaster package is missing.
 - `attach_detach_controller.py`: starts after spawn so the cubes begin detached.
 
-![Gazebo, RViz, and table camera](docs/images/gazebo_rviz_camera.png)
+![Gazebo, RViz, and table camera](docs/images/spawn_robot.launch.py.png)
 
 Useful options:
 
@@ -346,7 +346,7 @@ The starting object poses are:
 | `wood_collection_bin` | `-0.30 -0.15 1.015 0 0 0` | Wood drop target |
 | `steel_collection_bin` | `0.30 -0.15 1.015 0 0 0` | Steel drop target |
 
-![Input table scene](docs/images/input_scene.png)
+![Input table scene](docs/images/start_sorting.launch.py_1.png)
 
 The sorter loads bin positions from `world.sdf`, transforms them into the robot base frame, and uses them as drop targets. Cube positions are not loaded from `world.sdf` during neural-network sorting.
 
@@ -542,7 +542,7 @@ Detected target wood_cube_1 at base XY (...) is out of motion range: ...
 
 That detection is skipped. If another reachable cube exists, the sorter continues with it. If not, the robot moves back to home.
 
-![Robot approaching a detected cube](docs/images/pick_motion.png)
+![Robot approaching a detected cube](docs/images/start_sorting.launch.py_2.png)
 
 **Pick And Place Logic**
 
@@ -587,7 +587,7 @@ goal_msg.trajectory = trajectory
 
 Drop targets are selected from `target_bin` first. If that is missing, labels are matched against the configured bin names. If no matching bin is found, the sorter falls back to `shared_bin_x` and `shared_bin_y`.
 
-![Cube sorted into bin](docs/images/sorted_cube_in_bin.png)
+![Cube sorted into bin](docs/images/start_sorting.launch.py_3.png)
 
 **Safety And Security Steps**
 
@@ -703,7 +703,7 @@ OpenCV controls:
 | `c` or right click | clear box |
 | `q` | quit |
 
-![Training image collector](docs/images/training_collector.png)
+![Training image collector](docs/images/save_training_images.py.png)
 
 For already captured images stored in class-named folders such as `projekt/training_images/wood_cube`, `projekt/training_images/steel_cube`, and `projekt/training_images/not_cube`, run offline annotation:
 
@@ -903,14 +903,13 @@ Because `PixelDetection.msg` and `PixelDetectionArray.msg` are custom interfaces
 The README references the uploaded screenshots with these filenames:
 
 ```text
-docs/images/final_sorting_scene.png
-docs/images/pick_motion.png
-docs/images/input_scene.png
-docs/images/check_urdf_rviz.png
-docs/images/training_collector.png
-docs/images/gazebo_rviz_camera.png
-docs/images/world_only_scene.png
-docs/images/sorted_cube_in_bin.png
+docs/images/start_sorting.launch.py_3.png
+docs/images/start_sorting.launch.py_2.png
+docs/images/start_sorting.launch.py_1.png
+docs/images/check_urdf.launch.py.png
+docs/images/save_training_images.py.png
+docs/images/spawn_robot.launch.py.png
+docs/images/world.launch.py.png
 ```
 
-If the images do not appear on GitHub, save the corresponding screenshots into `docs/images` with the names above.
+If the images do not appear on GitHub, check that the files above are committed exactly with those names. GitHub image links are case-sensitive.
