@@ -278,6 +278,7 @@ class ScaraSorter(Node):
         self.declare_parameter("direct_attach_period", 0.5)
         self.declare_parameter("release_timeout", 2.0)
         self.declare_parameter("tick_period", 0.5)
+        self.declare_parameter("unreachable_pixel_retry_distance", 20.0)
 
         self._base_frame = self.get_parameter("base_frame").value
         self._default_detection_frame = self.get_parameter(
@@ -325,6 +326,9 @@ class ScaraSorter(Node):
             self.get_parameter("direct_attach_period").value
         )
         self._release_timeout = float(self.get_parameter("release_timeout").value)
+        self._unreachable_pixel_retry_distance = float(
+            self.get_parameter("unreachable_pixel_retry_distance").value
+        )
 
         self._kinematics = ScaraKinematics(
             link1_length=float(self.get_parameter("link1_length").value),
@@ -339,6 +343,7 @@ class ScaraSorter(Node):
         self._latest_detections: list[PixelDetection] = []
         self._latest_detection_frame = self._default_detection_frame
         self._completed_keys: set[str] = set()
+        self._unreachable_detections: dict[str, tuple[float, float]] = {}
         self._attached_object = ""
         self._homed_after_empty = False
         self._busy = False
@@ -396,8 +401,24 @@ class ScaraSorter(Node):
             self._latest_detection_frame = (
                 msg.header.frame_id or self._default_detection_frame
             )
+
+            for detection in msg.detections:
+                key = self._detection_key(detection)
+                if key not in self._unreachable_detections:
+                    continue
+
+                skipped_u, skipped_v = self._unreachable_detections[key]
+                distance = hypot(
+                    float(detection.center_x) - skipped_u,
+                    float(detection.center_y) - skipped_v,
+                )
+                if distance > self._unreachable_pixel_retry_distance:
+                    del self._unreachable_detections[key]
+
             if any(
                 self._detection_key(detection) not in self._completed_keys
+                and self._detection_key(detection)
+                not in self._unreachable_detections
                 for detection in msg.detections
             ):
                 self._homed_after_empty = False
@@ -425,6 +446,7 @@ class ScaraSorter(Node):
             detections = list(self._latest_detections)
             detection_frame = self._latest_detection_frame
             completed_keys = set(self._completed_keys)
+            unreachable_keys = set(self._unreachable_detections)
 
         if not detections:
             return None, False
@@ -459,6 +481,8 @@ class ScaraSorter(Node):
             key = self._detection_key(detection)
             if key in completed_keys:
                 continue
+            if key in unreachable_keys:
+                continue
 
             try:
                 point_base = project_pixel_to_plane(
@@ -468,15 +492,29 @@ class ScaraSorter(Node):
                     camera_to_base,
                     self._cube_top_z,
                 )
-                x, y, _ = point_base
-                if not self._inside_pick_region(x, y):
-                    continue
-
-                joints = self._kinematics.solve_xy(x, y)
             except ValueError as exc:
                 self.get_logger().warning(
-                    f"Ignoring detection {key}: {exc}"
+                    f"Ignoring detection {key}: could not project pixel "
+                    f"({detection.center_x:.1f}, {detection.center_y:.1f}) "
+                    f"to the pick plane: {exc}"
                 )
+                continue
+
+            x, y, _ = point_base
+            if not self._inside_pick_region(x, y):
+                self._mark_detection_unreachable(
+                    key,
+                    detection,
+                    x,
+                    y,
+                    "outside the configured pick region",
+                )
+                continue
+
+            try:
+                joints = self._kinematics.solve_xy(x, y)
+            except ValueError as exc:
+                self._mark_detection_unreachable(key, detection, x, y, str(exc))
                 continue
 
             candidates.append(PickCandidate(detection, key, x, y, joints))
@@ -497,6 +535,29 @@ class ScaraSorter(Node):
         return (
             f"{detection.object_class}:"
             f"{round(detection.center_x)}:{round(detection.center_y)}"
+        )
+
+    def _mark_detection_unreachable(
+        self,
+        key: str,
+        detection: PixelDetection,
+        x: float,
+        y: float,
+        reason: str,
+    ) -> None:
+        with self._state_lock:
+            already_reported = key in self._unreachable_detections
+            self._unreachable_detections[key] = (
+                float(detection.center_x),
+                float(detection.center_y),
+            )
+
+        if already_reported:
+            return
+
+        self.get_logger().warning(
+            f"Detected target {key} at base XY ({x:.3f}, {y:.3f}) "
+            f"is out of motion range: {reason}"
         )
 
     def _start_worker(self, target, *args) -> None:

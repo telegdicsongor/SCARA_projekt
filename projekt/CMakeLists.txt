@@ -25,13 +25,22 @@ install(PROGRAMS
   scripts/scara_sorter.py
   scripts/save_training_images.py
   scripts/static_pixel_detection_publisher.py
+  scripts/yolo_cube_detector.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(FILES
+  yolo26n.pt
+  yolov8n.pt
+  DESTINATION share/${PROJECT_NAME}
 )
 
 install(DIRECTORY
   config
+  datasets
   launch
   rviz
+  runs
   urdf
   worlds
   meshes

@@ -1,30 +1,55 @@
-# Training Images
+# Cube Detector Training Images
 
-This folder is for labeled camera images used to train the cube classifier.
+This folder contains the class-folder source images for the SCARA cube detector:
 
-Run the image collector from the package source folder:
-
-```bash
-cd /home/telegdicsongor/scara_ws/SCARA_projekt/projekt
-source ../install/setup.bash
-ros2 run projekt save_training_images.py
+```text
+training_images/
+  wood_cube/
+  steel_cube/
+  not_cube/
 ```
 
-Keyboard labels:
+These images can be reused for YOLO training, but `wood_cube` and `steel_cube`
+frames still need bounding boxes before training.
 
-- `w`: save the current frame as `wood_cube`
-- `s`: save the current frame as `steel_cube`
-- `n`: save the current frame as `not_cube`
-- `q`: quit the OpenCV window
+## Annotate Existing Images
 
-Recommended first dataset:
+From the workspace folder:
 
-| Folder | Meaning | First target |
-| --- | --- | --- |
-| `wood_cube/` | Wood cube visible | 30 images |
-| `steel_cube/` | Steel cube visible | 30 images |
-| `not_cube/` | Empty table, bins, robot, or unclear view | 30 images |
+```bash
+cd /home/veszpo/projekt_ws
+python3 SCARA_projekt/projekt/scripts/save_training_images.py \
+  --source-root SCARA_projekt/projekt/training_images
+```
 
-For a better model, collect at least 100 images per class. Move the objects to
-different places on the table and include slightly different camera views if
-possible.
+Controls:
+
+- drag with the left mouse button: select the cube bounding box
+- Enter or Space: save the current image
+- `n`: save the current image as background/no cube label
+- `t`: save future samples to `train`
+- `v`: save future samples to `val`
+- `s`: skip current image
+- `c` or right-click: clear the current box
+- `q`: quit
+
+The YOLO dataset is written to:
+
+```text
+/home/veszpo/projekt_ws/SCARA_projekt/projekt/datasets/scara_cubes/
+```
+
+## Train And Export
+
+From `/home/veszpo/projekt_ws`, save future training runs inside the project:
+
+```bash
+yolo detect train model=SCARA_projekt/projekt/yolov8n.pt data=SCARA_projekt/projekt/datasets/scara_cubes/data.yaml epochs=80 imgsz=640 project=SCARA_projekt/projekt/runs/detect name=train
+yolo export model=SCARA_projekt/projekt/runs/detect/train-3/weights/best.pt format=onnx imgsz=640 opset=12 simplify=False
+```
+
+The default sorting launch now uses:
+
+```text
+SCARA_projekt/projekt/runs/detect/train-3/weights/best.onnx
+```

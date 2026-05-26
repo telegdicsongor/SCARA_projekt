@@ -2,10 +2,8 @@
 
 ## Final Sorting Scene
 
-This project simulates a SCARA robot that will use an AI-assisted camera to
-detect objects on a table and sort them into separate collection bins. The
-current milestone prepares the simulation scene before the neural network is
-implemented.
+This project simulates a SCARA robot that uses a table camera detector to
+detect objects on a table and sort them into separate collection bins.
 
 The scene contains two 5 cm dynamic cubes in the center input area:
 
@@ -22,14 +20,14 @@ The target areas are two low open collection bins on the table:
 | `wood_cube_5cm` | `0.00 0.18 1.015 0 0 0` | `wood_collection_bin` | First neural-network detection target |
 | `steel_cube_5cm` | `0.12 0.18 1.015 0 0 0` | `steel_collection_bin` | Future second object class for sorting |
 
-The table camera stays unchanged for this milestone. It will later provide the
-input image for the AI detector node, which should publish the object class,
-confidence, and image position for the robot movement algorithm.
+The table camera provides the compressed image stream for the detector node,
+which publishes object class, confidence, and image position for the movement
+algorithm.
 
 ### Run The Simulation
 
 ```bash
-cd /home/telegdicsongor/scara_ws/SCARA_projekt
+cd /home/veszpo/projekt_ws/SCARA_projekt
 colcon build --packages-select projekt
 source install/setup.bash
 ros2 launch projekt spawn_robot.launch.py
@@ -65,7 +63,7 @@ table camera image and saves labeled frames for neural network training.
 Start the simulation in one terminal:
 
 ```bash
-cd /home/telegdicsongor/scara_ws/SCARA_projekt
+cd /home/veszpo/projekt_ws/SCARA_projekt
 source install/setup.bash
 ros2 launch projekt spawn_robot.launch.py
 ```
@@ -73,23 +71,37 @@ ros2 launch projekt spawn_robot.launch.py
 Start the collector in another terminal:
 
 ```bash
-cd /home/telegdicsongor/scara_ws/SCARA_projekt/projekt
-source ../install/setup.bash
+cd /home/veszpo/projekt_ws/SCARA_projekt
+source install/setup.bash
 ros2 run projekt save_training_images.py
 ```
 
 Keyboard labels in the OpenCV window:
 
-- `w`: save a `wood_cube` image
-- `s`: save a `steel_cube` image
-- `n`: save a `not_cube` image
+- drag a box around the cube
+- `w`: save the box as `wood_cube`
+- `s`: save the box as `steel_cube`
+- `n`: save the frame as background
+- `t` / `v`: select train or validation split
 - `q`: quit
 
-Images are saved under:
+Existing class-folder images are stored under:
 
 ```text
 projekt/training_images/
 ```
 
-For the first test, collect at least 30 images per class. For better training,
-collect at least 100 images per class with the cubes in different positions.
+YOLO training datasets are stored under:
+
+```text
+projekt/datasets/
+```
+
+YOLO training runs are stored under:
+
+```text
+projekt/runs/
+```
+
+The sorting launch uses the trained detector at
+`projekt/runs/detect/train-3/weights/best.onnx` by default.

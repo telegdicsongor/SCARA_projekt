@@ -1,0 +1,6 @@
+path: /home/veszpo/projekt_ws/SCARA_projekt/projekt/datasets/scara_cubes
+train: images/train
+val: images/val
+names:
+  0: wood_cube
+  1: steel_cube

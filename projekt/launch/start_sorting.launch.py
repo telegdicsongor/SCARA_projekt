@@ -1,15 +1,16 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
-from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration
+from launch.conditions import IfCondition, UnlessCondition
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
     world_arg = DeclareLaunchArgument(
         "world",
         default_value="world.sdf",
-        description="World file used for static demo object poses",
+        description="World file used for bin poses and optional static demo detections",
     )
     use_sim_time_arg = DeclareLaunchArgument(
         "use_sim_time",
@@ -18,8 +19,42 @@ def generate_launch_description():
     )
     static_pixel_detections_arg = DeclareLaunchArgument(
         "static_pixel_detections",
+        default_value="false",
+        description="Use world.sdf cube detections instead of the camera neural network",
+    )
+    detector_model_arg = DeclareLaunchArgument(
+        "detector_model",
+        default_value=PathJoinSubstitution(
+            [
+                FindPackageShare("projekt"),
+                "runs",
+                "detect",
+                "train-3",
+                "weights",
+                "best.onnx",
+            ]
+        ),
+        description="Path to a trained YOLO .onnx or .pt cube detector model",
+    )
+    detector_backend_arg = DeclareLaunchArgument(
+        "detector_backend",
+        default_value="auto",
+        description="YOLO backend: auto, onnxruntime, opencv, or ultralytics",
+    )
+    detector_confidence_arg = DeclareLaunchArgument(
+        "detector_confidence",
+        default_value="0.35",
+        description="Minimum object detection confidence",
+    )
+    detector_startup_delay_arg = DeclareLaunchArgument(
+        "detector_startup_delay",
+        default_value="2.0",
+        description="Seconds to wait before taking the home-position detection snapshot",
+    )
+    detector_publish_once_arg = DeclareLaunchArgument(
+        "detector_publish_once",
         default_value="true",
-        description="Publish world.sdf cube detections until the neural network node exists",
+        description="Publish one detection snapshot while the robot is home",
     )
     attach_controller_arg = DeclareLaunchArgument(
         "attach_controller",
@@ -58,6 +93,37 @@ def generate_launch_description():
                 "base_world_y": LaunchConfiguration("y"),
                 "base_world_z": LaunchConfiguration("z"),
                 "base_world_yaw": LaunchConfiguration("yaw"),
+            }
+        ],
+    )
+
+    yolo_detector_node = Node(
+        package="projekt",
+        executable="yolo_cube_detector.py",
+        name="yolo_cube_detector",
+        output="screen",
+        condition=UnlessCondition(LaunchConfiguration("static_pixel_detections")),
+        parameters=[
+            {
+                "use_sim_time": LaunchConfiguration("use_sim_time"),
+                "compressed_image_topic": "/table_camera/image/compressed",
+                "camera_info_topic": "/table_camera/camera_info",
+                "detections_topic": "/sorting/pixel_detections",
+                "base_frame": "base_link",
+                "camera_frame": "table_camera_link_optical",
+                "model_path": LaunchConfiguration("detector_model"),
+                "backend": LaunchConfiguration("detector_backend"),
+                "class_names": ["wood_cube", "steel_cube"],
+                "target_bins": ["wood_collection_bin", "steel_collection_bin"],
+                "confidence_threshold": LaunchConfiguration("detector_confidence"),
+                "startup_delay": LaunchConfiguration("detector_startup_delay"),
+                "publish_once": LaunchConfiguration("detector_publish_once"),
+                "mask_plane_z": 0.045,
+                "mask_base_rectangles": (
+                    "-0.08,0.08,-0.58,0.08;"
+                    "0.02,0.28,0.18,0.42;"
+                    "0.02,0.28,-0.42,-0.18"
+                ),
             }
         ],
     )
@@ -123,12 +189,18 @@ def generate_launch_description():
             world_arg,
             use_sim_time_arg,
             static_pixel_detections_arg,
+            detector_model_arg,
+            detector_backend_arg,
+            detector_confidence_arg,
+            detector_startup_delay_arg,
+            detector_publish_once_arg,
             x_arg,
             y_arg,
             z_arg,
             yaw_arg,
             attach_controller_arg,
             attach_detach_controller_node,
+            yolo_detector_node,
             static_detector_node,
             sorter_node,
         ]
