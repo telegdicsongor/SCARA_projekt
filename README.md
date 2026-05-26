@@ -31,6 +31,8 @@ Official installation and reference pages used by this guide:
 
 ```text
 SCARA_projekt/
+├── docs/
+│   └── images/                 # README screenshots and detector debug image
 ├── README.md
 └── projekt/
     ├── config/                 # ros2_control and Gazebo bridge configuration
