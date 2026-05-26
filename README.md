@@ -54,6 +54,42 @@ The default trained detector used by the sorting launch is:
 projekt/runs/detect/train-3/weights/best.onnx
 ```
 
+**Quick Start With The Pretrained Detector**
+
+Use this path if you only want to run the sorting demo with the pretrained neural network already included in the repository and you do not want to train a new model.
+
+Install dependencies, clone, build, and source the workspace as described in [Install Dependencies](#install-dependencies). Then open two terminals.
+
+Terminal 1 starts Gazebo, RViz, the robot, the controllers, and the camera bridge:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/projekt_ws/SCARA_projekt
+source .venv/bin/activate
+source install/setup.bash
+ros2 launch projekt spawn_robot.launch.py
+```
+
+Wait until Gazebo is open and the robot has moved to its home position. Terminal 2 starts sorting with the included ONNX model:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+cd ~/projekt_ws/SCARA_projekt
+source .venv/bin/activate
+source install/setup.bash
+ros2 launch projekt start_sorting.launch.py
+```
+
+`start_sorting.launch.py` uses `projekt/runs/detect/train-3/weights/best.onnx` by default, so no `detector_model` argument is needed for the pretrained repo model. If you want to be explicit, run:
+
+```bash
+ros2 launch projekt start_sorting.launch.py \
+  detector_model:="$PWD/projekt/runs/detect/train-3/weights/best.onnx" \
+  detector_backend:=onnxruntime
+```
+
+The detector will take one masked table-camera snapshot while the robot is home, publish the detected wood and steel cube pixels, and the sorter will move each reachable cube to its matching bin. To test another arrangement, stop only the sorting launch with `Ctrl+C`, move the cubes in Gazebo, and run `ros2 launch projekt start_sorting.launch.py` again.
+
 If the large Gazebo model pack is not already present after cloning, download it here:
 
 [Gazebo models on Google Drive](https://drive.google.com/file/d/1tcfoLFReEW1XNHPUAeLpIz2iZXqQBvo_/view)
