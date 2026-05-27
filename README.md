@@ -210,7 +210,7 @@ rosdep install --from-paths projekt --ignore-src -r -y
 
 The ROS package is built with [`ament_cmake`](https://index.ros.org/p/ament_cmake/) and installed resources are found at runtime with [`ament_index_python`](https://index.ros.org/p/ament_index_python/).
 
-Create a Python virtual environment for YOLO training/export and ONNX Runtime inference. The `--system-site-packages` flag is important because the ROS 2 Python packages are installed by apt:
+Create the Python virtual environment used by YOLO training, YOLO export, and ONNX Runtime inference. The project uses `--system-site-packages` because ROS 2 Python packages such as `rclpy`, `cv_bridge`, and generated message modules are installed by apt under `/opt/ros/jazzy`:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
@@ -221,6 +221,14 @@ python -m pip install --upgrade pip
 python -m pip install ultralytics onnx onnxruntime
 ```
 
+Check that the environment can see both the ROS Python packages and the ML packages:
+
+```bash
+python -c "import rclpy, cv2, onnxruntime; from ultralytics import YOLO; print('virtual environment OK')"
+```
+
+If that command fails because `rclpy` or `cv_bridge` is missing, recreate the environment with `--system-site-packages`. If it fails because `onnxruntime` or `ultralytics` is missing, activate `.venv` again and rerun the `pip install` command.
+
 Build the ROS 2 package:
 
 ```bash
@@ -230,12 +238,21 @@ colcon build --symlink-install --packages-select projekt
 source install/setup.bash
 ```
 
-For every new terminal, source ROS and the workspace. Activate the virtual environment in terminals that run the YOLO detector, training, or export commands:
+For every new terminal that runs the detector, sorter, training, or export commands, source ROS, activate `.venv`, and source the built workspace:
 
 ```bash
 source /opt/ros/jazzy/setup.bash
 cd ~/projekt_ws/SCARA_projekt
 source .venv/bin/activate
+source install/setup.bash
+```
+
+For GUI-only tools such as `rqt_image_view`, use a separate terminal without `.venv` if Qt bindings are not visible:
+
+```bash
+deactivate  # only if .venv is active
+source /opt/ros/jazzy/setup.bash
+cd ~/projekt_ws/SCARA_projekt
 source install/setup.bash
 ```
 
