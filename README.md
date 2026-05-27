@@ -1,6 +1,8 @@
 # SCARA_projekt
 
-> Presentation video: [https://youtu.be/EQ3PIooiqys]
+## Presentation Video
+
+[![SCARA project presentation video](https://img.youtube.com/vi/EQ3PIooiqys/hqdefault.jpg)](https://youtu.be/EQ3PIooiqys)
 
 This repository contains a ROS 2 and Gazebo Sim project for a small SCARA sorting robot. The robot detects a wood cube and a steel cube from a fixed top-down table camera, converts the detected image pixels into robot-base `x` and `y` coordinates, and sorts the cubes into their matching bins.
 
